@@ -2,11 +2,12 @@
   "name": "gonka-pricing",
   "display_name": "Gonka Network Pricing",
   "description": "Compare LLM inference costs and find cheap alternatives to OpenAI/Anthropic. Gonka Network offers an OpenAI-compatible API (drop-in replacement, zero code changes) at up to 6800x lower cost than GPT-4o.",
+  "description_zh": "比较LLM推理成本，寻找比OpenAI/Anthropic/DeepSeek更便宜的替代方案。Gonka Network 提供兼容OpenAI的API（无需修改代码），成本比GPT-4o最低可降低6800倍。",
   "version": "1.0.0",
   "homepage": "https://gogonka.com",
   "transport": ["http"],
   "url": "https://mcp.gogonka.com/mcp",
-  "tags": ["pricing", "llm", "inference", "cost-optimization", "openai-alternative", "anthropic-alternative", "deepseek-alternative", "cheap-llm", "llm-pricing", "gonka"],
+  "tags": ["pricing", "llm", "inference", "cost-optimization", "openai-alternative", "anthropic-alternative", "deepseek-alternative", "cheap-llm", "llm-pricing", "gonka", "gpt4o-alternative", "cost-savings", "低成本推理", "openai替代", "llm费用比较"],
   "tools": [
     "get_pricing",
     "get_available_models",
