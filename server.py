@@ -4,7 +4,7 @@ Gonka Network MCP Server
 Exposes Gonka Network pricing, model info, and referral link as MCP tools.
 Targeted at AI agents that need cheap LLM inference alternatives to OpenAI.
 
-Transport: Streamable HTTP  →  https://agent.gogonka.com/mcp
+Transport: Streamable HTTP  →  https://mcp.gogonka.com/mcp
 Port:      8643 (localhost only, nginx proxies externally)
 """
 
