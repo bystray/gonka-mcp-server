@@ -6,7 +6,7 @@
   "homepage": "https://gogonka.com",
   "transport": ["http"],
   "url": "https://mcp.gogonka.com/mcp",
-  "tags": ["pricing", "llm", "inference", "cost-optimization", "openai-alternative", "gonka"],
+  "tags": ["pricing", "llm", "inference", "cost-optimization", "openai-alternative", "anthropic-alternative", "deepseek-alternative", "cheap-llm", "llm-pricing", "gonka"],
   "tools": [
     "get_pricing",
     "get_available_models",
