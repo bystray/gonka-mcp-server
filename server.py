@@ -287,4 +287,6 @@ if __name__ == "__main__":
         port=8643,
         log_level="info",
         show_banner=False,
+        json_response=True,    # Plain JSON instead of SSE — works with all agents
+        stateless_http=True,   # No session management — each request is independent
     )
