@@ -49,8 +49,8 @@ Lists models available on Gonka Network with their access status.
 ```json
 [
   {"id": "MiniMaxAI/MiniMax-M2.7", "status": "available"},
-  {"id": "moonshotai/Kimi-K2.6",   "status": "restricted"},
-  {"id": "Qwen/Qwen3-235B-A22B-Instruct-2507-FP8", "status": "restricted"}
+  {"id": "moonshotai/Kimi-K2.6",   "status": "available"},
+  {"id": "Qwen/Qwen3-235B-A22B-Instruct-2507-FP8", "status": "available"}
 ]
 ```
 
