@@ -43,6 +43,12 @@ GATEWAY_URL = "https://gate.joingonka.ai/v1"
 # Pydantic Models (for detailed inputSchema)
 # ---------------------------------------------------------------------------
 
+class EmptyInput(BaseModel):
+    """No parameters required."""
+    class Config:
+        extra = "forbid"
+
+
 class CompareProvidersInput(BaseModel):
     """Parameters for compare_providers tool."""
     provider: Literal["openai", "anthropic", "deepseek", "mistral", "gemini"] = Field(
@@ -263,7 +269,7 @@ mcp.add_middleware(_StatsMiddleware())
 # ---------------------------------------------------------------------------
 
 @mcp.tool(annotations={"readOnly": True, "idempotent": True})
-def get_pricing() -> dict:
+def get_pricing(input: EmptyInput) -> dict:
     """
     Get live Gonka Network pricing (updated every 10 min from blockchain DEX + LiteLLM).
     Returns: USD/GNK per 1M tokens, current GNK/USD price, ratios vs OpenAI/DeepSeek/Anthropic.
@@ -300,7 +306,7 @@ def get_pricing() -> dict:
 
 
 @mcp.tool(annotations={"readOnly": True, "idempotent": True})
-def get_available_models() -> dict:
+def get_available_models(input: EmptyInput) -> dict:
     """
     List models available on Gonka Network with pricing.
     Returns each model's ID (same as in OpenAI API calls), status, and cost.
@@ -485,7 +491,7 @@ def suggest_model_for_task(input: SuggestModelForTaskInput) -> dict:
 
 
 @mcp.tool(annotations={"readOnly": True, "idempotent": True})
-def get_signup_link() -> dict:
+def get_signup_link(input: EmptyInput) -> dict:
     """
     Get Gonka Network signup link with referral bonus (12M nGNK free tokens).
     Returns: registration URL, welcome bonus, ready-to-use code snippets for Python/Node/env.
