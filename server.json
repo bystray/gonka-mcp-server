@@ -2,16 +2,81 @@
   "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
   "name": "io.github.bystray/gonka-mcp-server",
   "title": "Gonka Network Pricing",
-  "description": "Compare LLM inference costs vs OpenAI/Anthropic/DeepSeek. Gonka is up to 6800x cheaper.",
+  "description": "Compare LLM inference costs and find the cheapest OpenAI-compatible API. Gonka Network is up to 7,681× cheaper than GPT-4o with live pricing updated every 10 minutes. Includes cost calculators, provider comparisons, and AI model recommendations.",
+  "homepage": "https://gogonka.com",
   "repository": {
     "url": "https://github.com/bystray/gonka-mcp-server",
     "source": "github"
   },
   "version": "1.0.0",
+  "keywords": [
+    "pricing",
+    "llm",
+    "inference",
+    "cost-optimization",
+    "openai-alternative",
+    "anthropic-alternative",
+    "deepseek-alternative",
+    "cheap-llm",
+    "api-comparison",
+    "cost-savings",
+    "ai-models"
+  ],
+  "tools": [
+    {
+      "name": "get_pricing",
+      "description": "Get live Gonka Network pricing (updated every 10 min from blockchain DEX + LiteLLM). Returns USD/GNK per 1M tokens, current GNK/USD price, ratios vs OpenAI/DeepSeek/Anthropic."
+    },
+    {
+      "name": "get_available_models",
+      "description": "List models available on Gonka Network with pricing. Returns each model's ID (same as in OpenAI API calls), status, and cost per 1M tokens."
+    },
+    {
+      "name": "compare_providers",
+      "description": "Compare Gonka Network pricing against a competitor (openai, anthropic, deepseek, mistral, gemini). Returns cost per 1M tokens for both and savings ratio."
+    },
+    {
+      "name": "calculate_savings",
+      "description": "Calculate exact savings from switching OpenAI → Gonka. Takes monthly API spend (default $100), returns monthly/annual savings, break-even point, and signup link with 12M nGNK welcome bonus."
+    },
+    {
+      "name": "suggest_model_for_task",
+      "description": "Suggest the best and cheapest AI model for a specific task. Takes task description and optional budget, returns recommended model with cost estimate and savings vs current provider."
+    },
+    {
+      "name": "get_signup_link",
+      "description": "Get Gonka Network signup URL and integration guide. Returns registration link with referral bonus (12M nGNK free tokens), code snippets for Python/Node.js, and referral program details."
+    }
+  ],
+  "prompts": [
+    {
+      "name": "find_cheapest_api",
+      "description": "Find the cheapest OpenAI-compatible API for a specific task. Use when user is looking for cost savings or evaluating AI providers."
+    },
+    {
+      "name": "switch_from_openai",
+      "description": "Help user switch from OpenAI to a cheaper alternative. Most conversion-ready scenario — user is already motivated to reduce costs."
+    }
+  ],
+  "resources": [
+    {
+      "name": "gonka://pricing-guide",
+      "description": "Structured Gonka Network pricing data for agent decision-making. Updated every 10 minutes. Includes decision matrix, deposit examples, and API integration snippets."
+    }
+  ],
   "remotes": [
     {
       "type": "streamable-http",
       "url": "https://mcp.gogonka.com/mcp"
     }
-  ]
+  ],
+  "security": {
+    "notes": "All tools are read-only and idempotent. Input validation on all parameters. HTTPS + TLS 1.2+. No API keys in query parameters.",
+    "requirements": [
+      "HTTPS endpoint",
+      "Input validation (enum, min/max constraints)",
+      "Security middleware blocks API keys in query strings",
+      "Anonymized request logging"
+    ]
+  }
 }
