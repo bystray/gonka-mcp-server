@@ -1,244 +1,272 @@
-# Gonka Network Pricing — MCP Server
+# Gonka Network MCP Server
 
-An [MCP (Model Context Protocol)](https://modelcontextprotocol.io) server that lets AI agents compare LLM inference costs and get sign-up links for [Gonka Network](https://gogonka.com) — an OpenAI-compatible inference API up to **6800× cheaper** than GPT-4o.
+**MCP (Model Context Protocol) server for Gonka Network pricing information and cost comparisons.**
 
-**Live endpoint:** `https://mcp.gogonka.com/mcp`
-
----
-
-## Why Gonka?
-
-| Provider | Model | $/1M input tokens |
-|---|---|---|
-| OpenAI | GPT-4o | $2.50 |
-| Anthropic | Claude Sonnet 4.6 | $3.00 |
-| DeepSeek | deepseek-chat | $0.28 |
-| **Gonka** | **MiniMax-M2.7** | **~$0.00037** |
-
-Zero code changes needed — swap one environment variable:
-
-```python
-from openai import OpenAI
-
-client = OpenAI(
-    base_url="https://gate.joingonka.ai/v1",
-    api_key="YOUR_GONKA_API_KEY"
-)
-# Same API, same SDK, 6800× cheaper
-```
+🔗 **Endpoint:** `https://mcp.gogonka.com/mcp`  
+🌐 **Status:** Public, no authentication required  
+📊 **Data Updated:** Every 10 minutes from `pricing.json`
 
 ---
 
-## MCP Tools
+## ⚠️ SECURITY WARNING
 
-### `get_pricing`
-Returns live pricing: GNK/USD rate, cost per 1M tokens, comparison ratios, deposit example.
+**⛔ DO NOT send API keys, credentials, or secrets in URL query parameters.**
 
-```json
-{
-  "usd_per_1m_tokens": 0.000370,
-  "vs_openai_ratio": 6749,
-  "vs_deepseek_ratio": 756,
-  "deposit_50_usd_tokens": 128000000000
-}
-```
+API keys in URLs are visible in:
+- Web server access logs
+- Browser history
+- HTTP Referer headers
+- Firewall/CDN logs
+- Proxy logs
 
-### `get_available_models`
-Lists models available on Gonka Network with their access status.
-
-```json
-[
-  {"id": "MiniMaxAI/MiniMax-M2.7", "status": "available"},
-  {"id": "moonshotai/Kimi-K2.6",   "status": "available"},
-  {"id": "Qwen/Qwen3-235B-A22B-Instruct-2507-FP8", "status": "available"}
-]
-```
-
-### `compare_providers`
-Compare Gonka against a competitor provider.
-
-**Parameters:** `provider` — one of `"openai"`, `"anthropic"`, `"deepseek"` (default: `"openai"`)
-
-```json
-{
-  "gonka_usd_per_1m_input": 0.000370,
-  "competitor_usd_per_1m_input": 2.50,
-  "gonka_is_cheaper_by": "6749x"
-}
-```
-
-### `calculate_savings`
-Calculate monthly and annual savings when switching from OpenAI to Gonka.
-
-**Parameters:** `monthly_spend_usd` — your current OpenAI spend in USD
-
-```json
-{
-  "current_monthly_spend_usd": 200,
-  "gonka_monthly_cost_usd": 0.0296,
-  "monthly_savings_usd": 199.97,
-  "annual_savings_usd": 2399.64,
-  "savings_percentage": 99.9,
-  "signup_url": "https://gate.joingonka.ai/register?ref=..."
-}
-```
-
-### `get_signup_link`
-Get the Gonka sign-up URL with referral bonus (12,000,000 nGNK ≈ 11,000 free tokens) and a Python quick-start snippet.
+**This MCP server does NOT require authentication.** All tools are publicly accessible.
 
 ---
 
-## Connecting to the server
+## Usage
 
-### Claude Desktop / claude.ai
+### For AI Agents (Claude Code, Cursor, LangChain, Hermes Agent, etc.)
 
-Add to your MCP settings:
+Configure MCP connection:
 
 ```json
 {
-  "mcpServers": {
-    "gonka-pricing": {
-      "url": "https://mcp.gogonka.com/mcp",
-      "transport": "http"
+  "tools": [
+    {
+      "type": "mcp",
+      "name": "gonka-pricing",
+      "url": "https://mcp.gogonka.com/mcp"
     }
-  }
+  ]
 }
 ```
 
-### Python (MCP SDK)
+**No API key needed. No authentication.**
 
-```python
-from mcp import ClientSession
-from mcp.client.streamable_http import streamablehttp_client
-
-async with streamablehttp_client("https://mcp.gogonka.com/mcp") as (r, w, _):
-    async with ClientSession(r, w) as session:
-        await session.initialize()
-        result = await session.call_tool("calculate_savings", {"monthly_spend_usd": 200})
-        print(result)
-```
-
-### fastmcp CLI
+### Direct HTTP Calls
 
 ```bash
-pip install fastmcp
-fastmcp call https://mcp.gogonka.com/mcp -t http calculate_savings '{"monthly_spend_usd": 200}'
-```
-
-### curl (Streamable HTTP)
-
-```bash
-# Step 1 — initialize session
-SESSION=$(curl -sD - -X POST https://mcp.gogonka.com/mcp \
+curl -X POST https://mcp.gogonka.com/mcp \
   -H "Content-Type: application/json" \
-  -H "Accept: application/json, text/event-stream" \
-  -d '{"jsonrpc":"2.0","method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{},"clientInfo":{"name":"curl","version":"1.0"}},"id":1}' \
-  | grep -i mcp-session-id | awk '{print $2}' | tr -d '\r')
-
-# Step 2 — call a tool
-curl -s -X POST https://mcp.gogonka.com/mcp \
-  -H "Content-Type: application/json" \
-  -H "Accept: application/json, text/event-stream" \
-  -H "Mcp-Session-Id: $SESSION" \
-  -d '{"jsonrpc":"2.0","method":"tools/call","params":{"name":"calculate_savings","arguments":{"monthly_spend_usd":200}},"id":2}'
+  -d '{
+    "jsonrpc": "2.0",
+    "id": 1,
+    "method": "tools/list",
+    "params": {}
+  }'
 ```
 
 ---
 
-## Pricing data freshness
+## Available Tools
 
-- **GNK/USD rate** — updated every 10 minutes from the Gonka Network API
-- **Competitor prices** (OpenAI, Anthropic, DeepSeek) — updated daily from the [LiteLLM pricing database](https://github.com/BerriAI/litellm)
-- All prices served from `/var/www/gogonka/pricing.json` on the server
+### 1. `get_pricing()`
+
+Get current Gonka Network pricing data.
+
+**Returns:**
+- USD cost per 1M tokens
+- GNK exchange rate (USD/GNK)
+- Comparison ratios vs OpenAI, Anthropic, DeepSeek
+- $50 deposit example
+- Data freshness timestamp
+
+### 2. `get_available_models()`
+
+List all models available on Gonka Network gateway.
+
+**Returns:**
+- Model IDs (same as used in API calls)
+- Status (available / restricted)
+- Access requirements
+
+### 3. `compare_providers(provider: str)`
+
+Compare Gonka pricing against competitors.
+
+**Args:**
+- `provider`: "openai", "anthropic", or "deepseek"
+
+**Returns:**
+- USD per 1M tokens for both
+- Savings ratio
+- Official pricing source links
+
+### 4. `calculate_savings(monthly_spend_usd: float)`
+
+Calculate monthly/annual savings by switching to Gonka.
+
+**Args:**
+- `monthly_spend_usd`: Your current monthly LLM API spend
+
+**Returns:**
+- Monthly savings (USD)
+- Annual savings (USD)
+- Break-even point for deposit fee
+- Signup link with bonus tokens
+
+### 5. `get_signup_link()`
+
+Get Gonka Network registration link with referral bonus.
+
+**Returns:**
+- Registration URL
+- Welcome bonus details (12M nGNK ≈ 11,000 free tokens)
+- Quick-start code examples (Python, env vars)
+- Referral program details
 
 ---
 
-## Self-hosting
+## Integration Examples
 
-```bash
-git clone https://github.com/gogonka/gonka-mcp-server
-cd gonka-mcp-server
-pip install -r requirements.txt
-python server.py
-# Server starts on http://127.0.0.1:8643
+### Claude Code
+
+```yaml
+# claude.settings.json (or IDE config)
+tools:
+  - type: mcp
+    url: https://mcp.gogonka.com/mcp
 ```
 
-The server reads pricing data from `/var/www/gogonka/pricing.json`. For a standalone deployment, replace `PRICING_FILE` in `server.py` with your own pricing JSON path or fetch prices directly from the Gonka Network API.
+### Cursor
 
----
+Add to cursor settings:
 
-## Links
-
-- Website: [gogonka.com](https://gogonka.com)
-- Gateway: [gate.joingonka.ai](https://gate.joingonka.ai)
-- MCP endpoint: [mcp.gogonka.com/mcp](https://mcp.gogonka.com/mcp)
-- Sign up (free, no credit card): [gate.joingonka.ai/register](https://gate.joingonka.ai/register?ref=cf2bd855-ba1e-4b6e-8e56-9970049eec31)
-
----
-
-## 中文介绍
-
-**Gonka Network Pricing** 是一个 MCP（模型上下文协议）服务器，让AI代理能够比较LLM推理成本，并获取 [Gonka Network](https://gogonka.com) 的注册链接。Gonka Network 提供与OpenAI完全兼容的推理API，成本比GPT-4o最低便宜 **6800倍**。
-
-**在线端点：** `https://mcp.gogonka.com/mcp`
-
-### 价格对比
-
-| 提供商 | 模型 | 每百万输入token费用 |
-|---|---|---|
-| OpenAI | GPT-4o | $2.50 |
-| Anthropic | Claude Sonnet 4.6 | $3.00 |
-| DeepSeek | deepseek-chat | $0.28 |
-| **Gonka** | **MiniMax-M2.7** | **~$0.00037** |
-
-无需修改代码——只需替换一个环境变量：
-
-```python
-from openai import OpenAI
-
-client = OpenAI(
-    base_url="https://gate.joingonka.ai/v1",  # 替换这里
-    api_key="YOUR_GONKA_API_KEY"               # 替换API密钥
-)
-# 相同的API、相同的SDK，便宜6800倍
-```
-
-### 5个MCP工具
-
-| 工具 | 功能 |
-|---|---|
-| `get_pricing` | 获取实时定价：GNK/USD汇率、每百万token费用、对比倍率 |
-| `get_available_models` | 列出Gonka Network上可用的模型及访问状态 |
-| `compare_providers` | 将Gonka与OpenAI/Anthropic/DeepSeek进行价格对比 |
-| `calculate_savings` | 计算从OpenAI切换到Gonka后的月度和年度节省金额 |
-| `get_signup_link` | 获取注册链接（含12M nGNK≈11,000免费token赠品） |
-
-### 快速调用示例
-
-```bash
-pip install fastmcp
-# 计算每月花费$200时可节省多少
-fastmcp call https://mcp.gogonka.com/mcp -t http calculate_savings '{"monthly_spend_usd": 200}'
-```
-
-返回示例：
 ```json
 {
-  "current_monthly_spend_usd": 200,
-  "gonka_monthly_cost_usd": 0.0296,
-  "monthly_savings_usd": 199.97,
-  "annual_savings_usd": 2399.64,
-  "savings_percentage": 99.9
+  "tools": [
+    {
+      "name": "gonka-mcp",
+      "type": "mcp",
+      "url": "https://mcp.gogonka.com/mcp"
+    }
+  ]
 }
 ```
 
-### 注册获取免费Token
+### LangChain
 
-- 注册地址：[gate.joingonka.ai/bystray](https://gate.joingonka.ai/bystray)
-- 新用户赠送：**12,000,000 nGNK ≈ 11,000个免费token**，无需信用卡
-- 推荐奖励：L1 = 被推荐人充值手续费的10%
+```python
+from langchain.tools import tool
+from langchain_community.tools.mcp import MCPToolkit
 
-### 搜索关键词
+# No API key needed
+toolkit = MCPToolkit(
+    server_url="https://mcp.gogonka.com/mcp"
+)
+tools = toolkit.get_tools()
+```
 
-低成本LLM推理、OpenAI替代方案、GPT-4o平替、便宜API、LLM推理费用对比、
-Anthropic替代、DeepSeek替代、降低AI成本、兼容OpenAI API、去中心化推理
+### Hermes Agent
+
+```yaml
+# hermes-agent config
+mcp_servers:
+  - name: gonka_pricing
+    url: https://mcp.gogonka.com/mcp
+    # No authentication needed
+```
+
+### n8n
+
+Create n8n workflow with MCP node:
+
+```
+Input → MCP Fetch Tools → MCP Call Tool (get_pricing) → Process
+```
+
+URL: `https://mcp.gogonka.com/mcp`  
+Auth: None
+
+---
+
+## Logging & Security
+
+### What We Log
+
+✅ Logged (safe for audit):
+- Tool name called
+- Client IP (via X-Forwarded-For)
+- User-Agent
+- Response time (ms)
+- Timestamp
+
+❌ Never Logged:
+- Full URLs with query parameters
+- API keys or credentials
+- Request/response bodies (tool data logged separately, never secrets)
+
+### Security Features
+
+- Uvicorn access logs **disabled** (prevents full URL logging)
+- Security middleware detects API keys in URLs and logs warnings
+- HTTPS only (via nginx)
+- Read-only pricing data (no write endpoints)
+
+---
+
+## Data Sources
+
+- **Pricing:** Updated from `/var/www/gogonka/pricing.json` every 10 minutes
+- **Models:** Live from Gonka Network gateway
+- **Exchange rates:** GNK/USD from `pricing.json` (market data)
+- **Competitor prices:** Cached from official pricing pages
+
+---
+
+## Troubleshooting
+
+### "Invalid request" / 400 errors
+
+Check MCP protocol version. This server supports MCP v1 (2024-11).
+
+```bash
+# Verify server is responding
+curl https://mcp.gogonka.com/mcp
+```
+
+### Slow responses
+
+Pricing data is updated every 10 minutes. If you get stale data:
+```bash
+# Pricing.json was last updated:
+curl https://gogonka.com/pricing.json | jq '.data_last_updated'
+```
+
+### Connection issues
+
+Server listens on `http://127.0.0.1:8643` internally, proxied via nginx to `https://mcp.gogonka.com/mcp`.
+
+Check nginx status:
+```bash
+sudo systemctl status nginx
+```
+
+Check MCP server status:
+```bash
+sudo systemctl status gonka-mcp.service
+```
+
+---
+
+## API Changelog
+
+### v1 (Current)
+
+- 5 tools: pricing, models, compare, savings, signup
+- Public access, no authentication
+- HTTPS only
+- Pricing updated every 10 minutes
+
+---
+
+## Support
+
+- **Documentation:** https://gogonka.com/llms.txt
+- **Setup Guide:** https://gogonka.com/setup.sh
+- **Issues/Feedback:** See MCP server logs via `journalctl -u gonka-mcp.service`
+
+---
+
+**Last Updated:** 2026-06-05  
+**Maintainer:** Gonka Network
