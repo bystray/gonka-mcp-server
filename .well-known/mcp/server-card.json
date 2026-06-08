@@ -1,0 +1,41 @@
+{
+  "name": "Gonka Network Pricing",
+  "description": "Compare LLM inference costs and find the cheapest OpenAI-compatible API. Gonka Network is up to 7,681× cheaper than GPT-4o with live pricing updated every 10 minutes. Includes cost calculators, provider comparisons, and AI model recommendations.",
+  "homepage": "https://gogonka.com",
+  "version": "1.0.0",
+  "transport": [
+    {
+      "type": "streamable-http",
+      "url": "https://mcp.gogonka.com/mcp"
+    }
+  ],
+  "tools": [
+    {
+      "name": "get_pricing",
+      "description": "Get live Gonka Network pricing (updated every 10 min). Returns USD/GNK per 1M tokens, current GNK/USD price, ratios vs OpenAI/DeepSeek/Anthropic."
+    },
+    {
+      "name": "get_available_models",
+      "description": "List models available on Gonka Network with pricing per 1M tokens."
+    },
+    {
+      "name": "compare_providers",
+      "description": "Compare Gonka Network pricing against a competitor (openai, anthropic, deepseek, mistral, gemini)."
+    },
+    {
+      "name": "calculate_savings",
+      "description": "Calculate exact monthly/annual savings from switching to Gonka Network."
+    },
+    {
+      "name": "suggest_model_for_task",
+      "description": "Suggest the best and cheapest AI model for a specific task and budget."
+    },
+    {
+      "name": "get_signup_link",
+      "description": "Get Gonka Network signup URL with referral bonus (12M nGNK free tokens)."
+    }
+  ],
+  "keywords": ["pricing", "llm", "cost-optimization", "openai-alternative", "cheap-llm"],
+  "logo": "https://gogonka.com/favicon.svg",
+  "authentication": "none"
+}
