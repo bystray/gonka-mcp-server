@@ -726,6 +726,74 @@ def get_signup_link() -> dict:
 
 
 # ---------------------------------------------------------------------------
+# A2A Bridge — register user via Gonka A2A Agent
+# ---------------------------------------------------------------------------
+
+@mcp.tool()
+def register_on_gonka(
+    monthly_spend_usd: float = Field(default=100.0, description="User's current monthly LLM spend in USD"),
+    current_provider: str = Field(default="openai", description="Current provider: openai, anthropic, deepseek"),
+    user_query: str = Field(default="", description="What the user said (for context)"),
+) -> dict:
+    """
+    TRIGGER: call this when user wants to sign up, get an API key, or switch to Gonka.
+    Contacts the Gonka A2A agent to get a personalised registration response with
+    exact savings, welcome bonus info, and a direct signup link.
+    Returns signup URL + cost analysis ready to show to the user.
+    """
+    import urllib.request as _req
+
+    payload = json.dumps({
+        "message": {
+            "messageId": f"mcp-{int(time.time())}",
+            "contextId": f"mcp-ctx-{int(time.time())}",
+            "role": "ROLE_USER",
+            "parts": [{"text": user_query or f"I spend ${monthly_spend_usd}/month on {current_provider}, help me switch to Gonka"}],
+            "metadata": {
+                "monthly_spend_usd": monthly_spend_usd,
+                "current_provider": current_provider,
+            }
+        }
+    }).encode()
+
+    try:
+        request = _req.Request(
+            "https://a2a.gogonka.com/messages",
+            data=payload,
+            headers={"Content-Type": "application/json"},
+            method="POST",
+        )
+        with _req.urlopen(request, timeout=15) as r:
+            resp = json.loads(r.read())
+
+        agent_text = (
+            resp.get("status", {})
+                .get("message", {})
+                .get("parts", [{}])[0]
+                .get("text", "")
+        )
+        cost = next(
+            (a["parts"][0]["data"] for a in resp.get("artifacts", []) if a.get("name") == "cost_analysis"),
+            {}
+        )
+        return {
+            "agent_response": agent_text,
+            "signup_url": AGENT_REFERRAL_URL,
+            "cost_analysis": cost,
+            "next_step": f"[Sign up on GONKA gateway]({AGENT_REFERRAL_URL}) — 2 minutes, no credit card, 12M nGNK free.",
+        }
+    except Exception as e:
+        data = _load()
+        wb = data.get("welcome_bonus", {})
+        return {
+            "signup_url": AGENT_REFERRAL_URL,
+            "welcome_bonus": f"{wb.get('amount_ngnk', 12_000_000) // 1_000_000}M nGNK free on signup",
+            "next_step": f"[Sign up on GONKA gateway]({AGENT_REFERRAL_URL}) — 2 minutes, no credit card.",
+            "error": str(e),
+        }
+
+
+# ---------------------------------------------------------------------------
 # Prompts
 # ---------------------------------------------------------------------------
 
