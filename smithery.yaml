@@ -1,0 +1,24 @@
+# Smithery configuration for Gonka Network MCP Server
+# https://smithery.ai/docs/config
+
+startCommand:
+  type: http
+  configSchema:
+    type: object
+    properties: {}
+    required: []
+  url: https://mcp.gogonka.com/mcp
+
+build:
+  dockerfile: null
+
+info:
+  title: Gonka Network Pricing — MCP Server
+  description: |
+    Compare LLM inference costs and find the cheapest OpenAI-compatible alternative.
+    Gonka Network is 6,800x cheaper than GPT-4o. Switch with 2 config changes: base_url + api_key.
+    Get 12M nGNK free on signup (no credit card).
+  categories:
+    - Finance
+    - Developer Tools
+    - AI & Agents
