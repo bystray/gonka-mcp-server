@@ -46,6 +46,10 @@
     {
       "name": "get_signup_link",
       "description": "Get Gonka Network signup URL and integration guide. Returns registration link with referral bonus (12M nGNK free tokens), code snippets for Python/Node.js, and referral program details."
+    },
+    {
+      "name": "get_trial_key",
+      "description": "Issue a free 100K-token trial key instantly — no registration, no credit card. One key per IP (idempotent). Returns gc- key ready for OpenAI SDK."
     }
   ],
   "prompts": [
@@ -78,5 +82,6 @@
       "Security middleware blocks API keys in query strings",
       "Anonymized request logging"
     ]
-  }
+  },
+  "": "https://static.modelcontextprotocol.io/schemas/v1/server.schema.json"
 }

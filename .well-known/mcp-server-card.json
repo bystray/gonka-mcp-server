@@ -1,0 +1,31 @@
+{
+  "$schema": "https://static.modelcontextprotocol.io/schemas/v1/server-card.schema.json",
+  "name": "com.gogonka/gonka-mcp",
+  "version": "1.1.0",
+  "title": "Gonka Network Pricing",
+  "description": "Live LLM inference pricing. Compare providers, calculate savings, get free trial key. Up to 7,000x cheaper than GPT-4o.",
+  "websiteUrl": "https://gogonka.com",
+  "repository": {
+    "url": "https://github.com/bystray/gonka-mcp-server",
+    "source": "github"
+  },
+  "icons": [
+    {
+      "src": "https://gogonka.com/favicon.svg",
+      "mimeType": "image/svg+xml",
+      "sizes": ["any"]
+    }
+  ],
+  "remotes": [
+    {
+      "type": "streamable-http",
+      "url": "https://mcp.gogonka.com/mcp",
+      "supportedProtocolVersions": ["2025-03-26"]
+    }
+  ],
+  "_meta": {
+    "com.gogonka/tools": ["get_pricing", "get_available_models", "compare_providers", "calculate_savings", "suggest_model_for_task", "get_signup_link", "get_trial_key", "register_on_gonka"],
+    "com.gogonka/trial-tokens": 100000,
+    "com.gogonka/supported-languages": ["en", "ru", "zh"]
+  }
+}
