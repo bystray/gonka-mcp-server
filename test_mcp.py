@@ -10,7 +10,7 @@ import sys
 
 MCP_URL    = "https://mcp.gogonka.com/mcp"
 GONKA_URL  = "https://gate.joingonka.ai/v1"
-GONKA_KEY  = "jg-0852d7d026b82e4f6c7e850c3f4e3a3fa78e4e3af300fe149ebe2a19d9de206d"
+GONKA_KEY  = os.environ["GONKA_API_KEY"]
 MODEL      = "Qwen/Qwen3-235B-A22B-Instruct-2507-FP8"
 SIGNUP_URL = "gate.joingonka.ai/register"
 
