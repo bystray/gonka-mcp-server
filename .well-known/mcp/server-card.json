@@ -2,7 +2,7 @@
   "name": "Gonka Network Pricing",
   "description": "Compare LLM inference costs and find the cheapest OpenAI-compatible API. Gonka Network is up to 7,681× cheaper than GPT-4o with live pricing updated every 10 minutes. Includes cost calculators, provider comparisons, and AI model recommendations.",
   "homepage": "https://gogonka.com",
-  "version": "1.0.0",
+  "version": "2.0.0",
   "transport": [
     {
       "type": "streamable-http",

@@ -1,6 +1,6 @@
 # Gonka Network MCP Server
 
-[![A2A Registry Status](https://a2a.gogonka.com/badge/table)](https://a2a.gogonka.com)
+[![A2A Registry Status](https://a2a.gogonka.com/badge/table?t=1717977600)](https://a2a.gogonka.com)
 
 **All-in-one MCP server for Gonka Network:** live pricing, cost comparisons, AI model recommendations, and access to complete technical documentation via knowledge graph search.
 
