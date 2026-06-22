@@ -1,2 +1,5 @@
 __pycache__/
 core/__pycache__/
+.env
+graphify-out/
+*.jsonl

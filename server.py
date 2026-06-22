@@ -744,6 +744,9 @@ OR for agents needing inference immediately:
 """
 
 
+from core.docs import register_docs_tools
+register_docs_tools(mcp)
+
 # ---------------------------------------------------------------------------
 # Entry point
 # ---------------------------------------------------------------------------
