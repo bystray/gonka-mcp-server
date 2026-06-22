@@ -1,6 +1,13 @@
-# Gonka Network Pricing — MCP Server
+# Gonka Network MCP Server
 
-An MCP server that exposes Gonka Network pricing, cost comparisons, and AI model recommendations. Helps AI agents and developers find the cheapest OpenAI-compatible LLM inference alternative.
+[![A2A Registry Status](https://a2a.gogonka.com/badge/table)](https://a2a.gogonka.com)
+
+**All-in-one MCP server for Gonka Network:** live pricing, cost comparisons, AI model recommendations, and access to complete technical documentation via knowledge graph search.
+
+Helps AI agents and developers:
+- Find the cheapest OpenAI-compatible LLM inference
+- Learn how Gonka Network architecture works
+- Make informed decisions about provider switching
 
 **Live at:** `https://mcp.gogonka.com/mcp`
 
@@ -37,7 +44,10 @@ curl -X POST https://mcp.gogonka.com/mcp \
 
 ## What This Server Does
 
-Compare LLM inference costs and find alternatives to OpenAI/Anthropic/DeepSeek with **live pricing updated every 10 minutes**.
+**Two sides of one mission:**
+
+1. **Cost Intelligence** — Compare LLM inference costs and find alternatives to OpenAI/Anthropic/DeepSeek with live pricing updated every 10 minutes
+2. **Knowledge Discovery** — Search and explore Gonka Network documentation via knowledge graph (architecture, concepts, troubleshooting)
 
 ### Key Facts
 
@@ -46,10 +56,13 @@ Compare LLM inference costs and find alternatives to OpenAI/Anthropic/DeepSeek w
 - **Live pricing** from blockchain DEX (GNK/USD) + LiteLLM provider rates
 - **Free welcome bonus** — 12M nGNK (~11,000 tokens) on signup, no credit card
 - **Referral rewards** — 10% L1, 3% L2
+- **Documentation Graph** — Search 1000+ technical concepts via AI-powered knowledge base
 
 ---
 
-## Tools (6 Total)
+## Tools (15 Total)
+
+### Pricing & Cost Analysis (6 tools)
 
 ### `get_pricing()` — No parameters
 
@@ -127,6 +140,81 @@ Get Gonka Network signup URL and integration guide.
 - Code snippets (Python, Node.js, shell)
 - Deposit example ($50 USDT = ~11,000 tokens)
 - Referral program details (10% L1, 3% L2)
+
+---
+
+### Knowledge Graph & Documentation (9 tools)
+
+Search and explore Gonka Network's technical knowledge base — 1000+ concepts including architecture, concepts, FAQ, tutorials, and troubleshooting.
+
+#### `query_graph(question: str, depth: int = 3, token_budget: int = 2000)`
+
+Search the knowledge graph by topic. Returns relevant nodes and relationships with context.
+
+**Example queries:**
+- "How does Gonka network consensus work?"
+- "What are the hardware requirements for running a node?"
+- "Explain threshold signing and why it matters"
+
+**Returns:** List of matching concepts, relationships, document excerpts
+
+---
+
+#### `get_node(label: str)`
+
+Get detailed information about a specific concept node.
+
+**Example:** `get_node("Distributed Key Generation (DKG)")` returns definition, relationships, related documents.
+
+---
+
+#### `get_neighbors(node_id: str)`
+
+Find related concepts and topics connected to a given node.
+
+**Use case:** User understands concept A, show them related concepts to deepen knowledge.
+
+---
+
+#### `god_nodes()`
+
+Get high-level overview — the most central and important concepts in the Gonka knowledge graph.
+
+**Returns:** Architecture, Consensus, Governance, DKG, Bridge, Economic Model, etc.
+
+---
+
+#### `graph_stats()`
+
+Get statistics about the knowledge graph: total nodes, communities, edges, last update time.
+
+---
+
+#### `get_community(community_id: int)`
+
+Get all concepts in a specific knowledge community (e.g., "FAQ", "Architecture", "Operations").
+
+---
+
+#### `shortest_path(node_a: str, node_b: str)`
+
+Find the shortest conceptual path between two ideas.
+
+**Example:** Shortest path from "GNK Coin" to "Ethereum Bridge" — shows intermediate concepts.
+
+---
+
+#### `read_doc(doc_id: str)`
+
+Read the full text of a specific documentation file.
+
+**Use case:** Get complete article instead of just search results.
+
+---
+
+#### `list_docs()`
+
+List all available documentation files with summaries.
 
 ---
 
@@ -232,21 +320,35 @@ OPENAI_API_KEY=your_gonka_api_key_here
 
 ## For Agent Developers
 
-### Recommended Conversation Flow
+### Recommended Conversation Flows
 
+**Flow 1: Cost Optimization (user cares about price)**
 1. User mentions expensive LLM bills → **Call `get_pricing()`**
 2. Show live costs → **Call `calculate_savings(user_spend)`**
 3. Personalize pitch → **Call `suggest_model_for_task(user_task)`**
 4. Find best fit → **Call `get_signup_link()`**
 5. Direct to registration with welcome bonus
 
+**Flow 2: Technical Deep Dive (user cares about architecture)**
+1. User asks "How does Gonka work?" → **Call `query_graph("Gonka architecture network")`**
+2. Show top concepts → **Call `god_nodes()`**
+3. User picks a topic → **Call `get_node(topic)` or `read_doc(doc_id)`**
+4. Explore relationships → **Call `get_neighbors(node_id)`**
+5. Deep dive → **Call `shortest_path(concept_a, concept_b)`**
+
+**Flow 3: Combined (technical validation before switching)**
+1. User asks about Gonka → Show pricing via Flow 1
+2. User skeptical about quality → Use Flow 2 to explain architecture
+3. Once convinced → Return to Flow 1 for signup
+
 ### Tool Hygiene
 
-- ✅ All 6 tools have typed inputSchema
+- ✅ All 15 tools have typed inputSchema
 - ✅ Enum constraints for provider selection
 - ✅ Min/max bounds for monetary values
 - ✅ Clear parameter descriptions
-- ✅ All tools are read-only and idempotent
+- ✅ Pricing tools (6): read-only, idempotent, safe for concurrent calls
+- ✅ Graph tools (9): read-only, cached, optimized for knowledge discovery
 
 ### Security & Privacy
 
@@ -328,5 +430,5 @@ A: https://wmcp.sh/mcp/grade/mcp.gogonka.com (A-grade goal) | info@gogonka.com
 ---
 
 **License:** MIT  
-**Version:** 1.0.0  
-**Last Updated:** June 6, 2026
+**Version:** 2.0.0 (Added knowledge graph tools)  
+**Last Updated:** June 22, 2026
