@@ -75,6 +75,8 @@ def request_trial_key(client_ip: str) -> dict:
             headers={
                 "Content-Type": "application/json",
                 "X-Real-IP": client_ip,
+                "X-Agent-ID": "mcp-gonka",
+                "X-Source": "mcp",
             },
             method="POST",
         )

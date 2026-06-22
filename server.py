@@ -543,6 +543,8 @@ def register_on_gonka(
                 "metadata": {
                     "monthly_spend_usd": monthly_spend_usd,
                     "current_provider":  current_provider,
+                    "callerAgentId":     "mcp-gonka",
+                    "source":            "mcp",
                 },
             }
         },
@@ -552,19 +554,37 @@ def register_on_gonka(
         request = _req_mod.Request(
             "https://a2a.gogonka.com/messages",
             data=payload,
-            headers={"Content-Type": "application/json"},
+            headers={
+                "Content-Type": "application/json",
+                "X-Agent-ID": "mcp-gonka",
+                "X-Source": "mcp",
+            },
             method="POST",
         )
         with _req_mod.urlopen(request, timeout=15) as r:
             resp = json.loads(r.read())
 
         result_obj = resp.get("result", {})
-        parts      = result_obj.get("status", {}).get("message", {}).get("parts", [])
-        agent_text = next(
-            (p.get("text", "") for p in parts if p.get("kind") == "text"),
-            parts[0].get("text", "") if parts else "",
-        )
-        artifacts = result_obj.get("artifacts", [])
+        artifacts  = result_obj.get("artifacts", [])
+
+        # A2A returns text in artifacts[].parts[], not status.message.parts
+        agent_text = ""
+        for art in artifacts:
+            for p in art.get("parts", []):
+                if p.get("kind") == "text" and not (p.get("metadata") or {}).get("adk_thought"):
+                    t = (p.get("text") or "").strip()
+                    if t:
+                        agent_text = t
+                        break
+            if agent_text:
+                break
+        # Fallback to status.message for error path
+        if not agent_text:
+            parts = result_obj.get("status", {}).get("message", {}).get("parts", [])
+            agent_text = next(
+                (p.get("text", "") for p in parts if p.get("kind") == "text"), ""
+            )
+
         cost = next(
             (a["parts"][0].get("data", {}) for a in artifacts
              if a.get("name") == "cost_analysis" and a.get("parts")),
