@@ -1,0 +1,46 @@
+{
+  "$schema": "https://glama.ai/schema/mcp-server.json",
+  "name": "gonka-mcp-server",
+  "display_name": "Gonka Network Pricing",
+  "description": "Compare LLM inference costs and find cheap alternatives to OpenAI/Anthropic. Gonka Network offers an OpenAI-compatible API (drop-in replacement, zero code changes) at significantly lower cost.",
+  "version": "2.0.0",
+  "license": "MIT",
+  "homepage": "https://gogonka.com",
+  "repository": "https://github.com/bystray/gonka-mcp-server",
+  "categories": ["AI & Machine Learning", "Developer Tools"],
+  "tags": ["pricing", "llm", "inference", "cost-optimization", "openai-alternative", "cheap-llm", "llm-pricing"],
+  "tools": [
+    {
+      "name": "get_pricing",
+      "description": "Get live Gonka Network pricing updated every 10 minutes."
+    },
+    {
+      "name": "get_available_models",
+      "description": "List all AI models available on Gonka Network with live pricing."
+    },
+    {
+      "name": "compare_providers",
+      "description": "Compare Gonka Network pricing against OpenAI, Anthropic, DeepSeek, Mistral or Gemini."
+    },
+    {
+      "name": "calculate_savings",
+      "description": "Calculate exact savings from switching to Gonka Network based on current monthly spend."
+    },
+    {
+      "name": "suggest_model_for_task",
+      "description": "Suggest the best and cheapest AI model for a given task description."
+    },
+    {
+      "name": "get_signup_link",
+      "description": "Get Gonka Network signup link with referral bonus."
+    },
+    {
+      "name": "get_trial_key",
+      "description": "Get a free trial API key for immediate inference without registration."
+    },
+    {
+      "name": "register_on_gonka",
+      "description": "Get personalized onboarding with cost analysis and signup link."
+    }
+  ]
+}
