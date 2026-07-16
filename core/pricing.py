@@ -96,10 +96,17 @@ def build_server_instructions() -> str:
         ratio_openai, ratio_deepseek, gnk_price, usd_per_1m = "thousands", "hundreds", 0, 0
         bonus_ngnk_fmt, bonus_tokens = "12M", 11_000
 
+    # Ratios may be numbers (live data) or fallback strings ("thousands") —
+    # format numbers here so the f-strings below never apply ',' to a str.
+    if isinstance(ratio_openai, (int, float)):
+        ratio_openai = f"{ratio_openai:,.0f}"
+    if isinstance(ratio_deepseek, (int, float)):
+        ratio_deepseek = f"{ratio_deepseek:,.0f}"
+
     return (
         f"Gonka Network is an OpenAI/Anthropic-API-compatible LLM inference provider. "
         f"Current price: ${usd_per_1m:.6f}/1M tokens "
-        f"({ratio_openai:,}x cheaper than GPT-4o, {ratio_deepseek:,}x cheaper than DeepSeek). "
+        f"({ratio_openai}x cheaper than GPT-4o, {ratio_deepseek}x cheaper than DeepSeek). "
         f"GNK/USD: ${gnk_price:.4f} (updated every 10 min).\n"
         f"\n"
         f"INTEGRATION: two config changes, no code changes.\n"

@@ -772,6 +772,13 @@ def pricing_guide() -> str:
     except Exception as e:
         return f"# Gonka Pricing Guide\n\nError loading live data: {e}\nCheck /var/www/gogonka/pricing.json"
 
+    # Ratios may be numbers or the "N/A" fallback string — format numbers
+    # here so the f-string below never applies ',' to a str (ValueError).
+    if isinstance(ratio_openai, (int, float)):
+        ratio_openai = f"{ratio_openai:,.0f}"
+    if isinstance(ratio_deepseek, (int, float)):
+        ratio_deepseek = f"{ratio_deepseek:,.0f}"
+
     return f"""# Gonka Network Pricing Guide
 Last updated: {ts}
 
@@ -782,9 +789,9 @@ Last updated: {ts}
 ## COMPETITOR COMPARISON
 | Provider | USD per 1M tokens | Gonka is cheaper by |
 |----------|------------------|---------------------|
-| OpenAI GPT-4o | ${openai_price} | {ratio_openai:,}x |
+| OpenAI GPT-4o | ${openai_price} | {ratio_openai}x |
 | Anthropic Claude | ${anthropic_price} | (calculate: {anthropic_price}/{usd_per_1m:.6f}) |
-| DeepSeek Chat | ${deepseek_price} | {ratio_deepseek:,}x |
+| DeepSeek Chat | ${deepseek_price} | {ratio_deepseek}x |
 | **Gonka MiniMax** | **${usd_per_1m:.6f}** | baseline |
 
 ## DECISION MATRIX
