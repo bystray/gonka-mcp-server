@@ -12,7 +12,7 @@ Identified and fixed a critical security vulnerability where API keys were being
 ### Security Issue Found
 - **IP:** 162.159.102.83 (Cloudflare)
 - **Time:** 2026-06-05 11:04:13 UTC
-- **API Key:** `8a58cfe0-daf2-4dca-8b38-6266ae7bdead`
+- **API Key:** `[REDACTED]` (rotated; original value removed from this public repo)
 - **Severity:** HIGH (keys in logs, browser history, referer headers)
 - **Root Cause:** Client misconfiguration (sending key in URL query parameter)
 
@@ -24,7 +24,7 @@ Identified and fixed a critical security vulnerability where API keys were being
 
 **Before:**
 ```
-POST /mcp?api_key=8a58cfe0-daf2-4dca-8b38-6266ae7bdead HTTP/1.1" 200 OK
+POST /mcp?api_key=[REDACTED] HTTP/1.1" 200 OK
 ```
 
 **Actions:**
@@ -96,7 +96,7 @@ All tools are freely accessible via standard MCP protocol.
 | **README.md** | `/opt/agentgonka/gonka-mcp/` | Technical MCP server documentation |
 | **INTEGRATION_GUIDE.md** | `/opt/agentgonka/gonka-mcp/` | Setup for Claude Code, Cursor, LangChain, Hermes, n8n |
 | **mcp.html** | `https://gogonka.com/mcp.html` | Public-facing API documentation |
-| **monitor_mcp_security.sh** | `/opt/agentgonka/gonka-mcp/` | Automated security monitoring script |
+| **monitor_mcp_security.sh** | `/opt/agentgonka/gonka-mcp/` | On-demand security monitoring script (manual/cron, not wired into systemd) |
 
 **Features:**
 - Clear examples for each agent type
@@ -127,7 +127,7 @@ Created `monitor_mcp_security.sh` with checks for:
 /opt/agentgonka/gonka-mcp/monitor_mcp_security.sh --continuous
 ```
 
-**Result:** ✅ Automated monitoring in place
+**Result:** ✅ Monitoring script available; run manually or schedule it yourself (no cron/systemd timer is installed by default)
 
 ---
 
@@ -266,7 +266,7 @@ Created `monitor_mcp_security.sh` with checks for:
 - ✅ Full URL logging disabled
 - ✅ Security middleware detecting issues
 - ✅ Security warnings in MCP instructions
-- ✅ Automated monitoring in place
+- ✅ Monitoring script available (manual/cron)
 - ✅ Comprehensive documentation
 - ✅ Clear integration guides for all agents
 
@@ -315,7 +315,7 @@ tail -f /opt/agentgonka/mcp-stats.jsonl
 2. ✅ Detects and alerts on API key leaks
 3. ✅ Includes security warnings for all agents
 4. ✅ Has comprehensive documentation
-5. ✅ Includes automated monitoring and health checks
+5. ✅ Has a monitoring/health-check script available for manual or scheduled use
 
 **All recommendations have been implemented.**
 

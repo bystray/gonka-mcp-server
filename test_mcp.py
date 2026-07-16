@@ -1,17 +1,18 @@
 #!/usr/bin/env python3
 """
 Gonka MCP Conversion Test
-Uses Gonka Network (Qwen3-235B) to simulate real users and evaluate tool quality.
+Uses Gonka Network (MiniMax-M2.7) to simulate real users and evaluate tool quality.
 """
 
 import json
+import os
 import urllib.request
 import sys
 
 MCP_URL    = "https://mcp.gogonka.com/mcp"
 GONKA_URL  = "https://gate.joingonka.ai/v1"
 GONKA_KEY  = os.environ["GONKA_API_KEY"]
-MODEL      = "Qwen/Qwen3-235B-A22B-Instruct-2507-FP8"
+MODEL      = "MiniMaxAI/MiniMax-M2.7"
 SIGNUP_URL = "gate.joingonka.ai/register"
 
 

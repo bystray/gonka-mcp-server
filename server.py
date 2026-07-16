@@ -602,13 +602,24 @@ def get_trial_key() -> dict:
     One key per IP (idempotent — same IP always gets same key back).
     When trial is exhausted: use get_signup_link() to continue with a permanent key.
     """
-    ip = "-"
     try:
         req = get_http_request()
-        ip  = _get_client_ip(req)
     except Exception:
-        pass
+        # No HTTP request context (e.g. stdio transport). Per-caller
+        # identification and the one-key-per-IP idempotency guarantee both
+        # depend on a real client IP, and the trial issuer is only reachable
+        # from the hosted server's own localhost — neither works here.
+        return {
+            "status": "unsupported",
+            "error": (
+                "get_trial_key requires the hosted HTTP server at "
+                "https://mcp.gogonka.com/mcp — it isn't available over this "
+                "transport. Use get_signup_link() for a permanent key instead."
+            ),
+            "signup_url": AGENT_REFERRAL_URL,
+        }
 
+    ip = _get_client_ip(req)
     result = request_trial_key(ip)
     result["gonka_note"] = next_step_cta("trial")
     return result
@@ -838,10 +849,13 @@ register_docs_tools(mcp)
 # ---------------------------------------------------------------------------
 
 if __name__ == "__main__":
+    import os
     mcp.run(
         transport="http",
-        host="127.0.0.1",
-        port=8643,
+        # Production (systemd) binds localhost-only; nginx proxies externally.
+        # Set MCP_HOST=0.0.0.0 (e.g. in Docker) to bind all interfaces instead.
+        host=os.environ.get("MCP_HOST", "127.0.0.1"),
+        port=int(os.environ.get("MCP_PORT", "8643")),
         log_level="info",
         show_banner=False,
         json_response=True,
