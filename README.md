@@ -1,7 +1,5 @@
 # Gonka Network MCP Server
 
-[![A2A Registry Status](https://a2a.gogonka.com/badge/table?t=1717977600)](https://a2a.gogonka.com)
-
 **All-in-one MCP server for Gonka Network:** live pricing, cost comparisons, AI model recommendations, and access to complete technical documentation via knowledge graph search.
 
 Helps AI agents and developers:
@@ -60,9 +58,9 @@ curl -X POST https://mcp.gogonka.com/mcp \
 
 ---
 
-## Tools (15 Total)
+## Tools (18 Total)
 
-### Pricing & Cost Analysis (6 tools)
+### Pricing & Cost Analysis (8 tools)
 
 ### `get_pricing()` — No parameters
 
@@ -143,7 +141,26 @@ Get Gonka Network signup URL and integration guide.
 
 ---
 
-### Knowledge Graph & Documentation (9 tools)
+### `get_trial_key()` — No parameters
+
+Issue a free trial key instantly — no registration, no credit card.
+
+**Returns:**
+- `gc-` API key, 100K tokens, 10 req/min, OpenAI-compatible `base_url`
+- Recommended model + fallback models with retry guidance
+- Quick-start code with the key already filled in
+
+**Note:** expires in 2 hours unless used; the first inference call extends it to 24 hours. One key per IP per 24h (idempotent). HTTP transport only — not available when the server is run over stdio.
+
+---
+
+### `register_on_gonka(monthly_spend_usd: number = 100.0, current_provider: str = "openai", user_query: str = "")`
+
+Get a personalized cost-analysis pitch and signup link. **Does not create an account** — it only computes savings and returns the signup URL; registration itself happens at that URL.
+
+---
+
+### Knowledge Graph & Documentation (10 tools)
 
 Search and explore Gonka Network's technical knowledge base — 1000+ concepts including architecture, concepts, FAQ, tutorials, and troubleshooting.
 
@@ -168,9 +185,9 @@ Get detailed information about a specific concept node.
 
 ---
 
-#### `get_neighbors(node_id: str)`
+#### `get_neighbors(label: str, relation_filter: str = "")`
 
-Find related concepts and topics connected to a given node.
+Find concepts directly connected to a given concept, with relation type and confidence for each edge. Optionally filter by relation substring.
 
 **Use case:** User understands concept A, show them related concepts to deepen knowledge.
 
@@ -196,7 +213,7 @@ Get all concepts in a specific knowledge community (e.g., "FAQ", "Architecture",
 
 ---
 
-#### `find_shortest_path(node_a: str, node_b: str)`
+#### `find_shortest_path(source: str, target: str, max_hops: int = 8)`
 
 Find the shortest conceptual path between two ideas.
 
@@ -204,17 +221,23 @@ Find the shortest conceptual path between two ideas.
 
 ---
 
-#### `read_doc(doc_id: str)`
+#### `search_docs(query: str, max_results: int = 3, context_chars: int = 400)`
 
-Read the full text of a specific documentation file.
+Full-text search across all documentation files — every word in `query` must appear in a file (AND search). Use when `query_graph` returns nothing.
 
-**Use case:** Get complete article instead of just search results.
+---
+
+#### `read_doc(filename: str, max_chars: int = 8000)`
+
+Read the full text of a specific documentation file, including code examples and commands.
+
+**Use case:** Get the complete article instead of just search results.
 
 ---
 
 #### `list_docs()`
 
-List all available documentation files with summaries.
+List all available documentation filenames.
 
 ---
 
@@ -222,13 +245,13 @@ List all available documentation files with summaries.
 
 Agents can use these built-in prompts to start conversations:
 
-### `find_cheapest_api(task: string = "general LLM inference")`
+### `gonka_start(task: string = "general LLM inference")`
 
-Find the cheapest OpenAI-compatible API for a specific task.
+Seeds a cost-comparison conversation for a given task, with live price/ratio.
 
-### `switch_from_openai(monthly_spend_usd: number = 100)`
+### `calculate_my_savings(monthly_spend_usd: string = "100")`
 
-Help user switch from OpenAI to cheaper alternative.
+Seeds a savings-estimate conversation against current OpenAI/Anthropic spend.
 
 ---
 
@@ -336,8 +359,8 @@ current bill: **$100/month on OpenAI → roughly $1,200/year saved**
 **Flow 2: Technical Deep Dive (user cares about architecture)**
 1. User asks "How does Gonka work?" → **Call `query_graph("Gonka architecture network")`**
 2. Show top concepts → **Call `get_god_nodes()`**
-3. User picks a topic → **Call `get_node(topic)` or `read_doc(doc_id)`**
-4. Explore relationships → **Call `get_neighbors(node_id)`**
+3. User picks a topic → **Call `get_node(topic)` or `read_doc(filename)`**
+4. Explore relationships → **Call `get_neighbors(label)`**
 5. Deep dive → **Call `find_shortest_path(concept_a, concept_b)`**
 
 **Flow 3: Combined (technical validation before switching)**
@@ -347,31 +370,28 @@ current bill: **$100/month on OpenAI → roughly $1,200/year saved**
 
 ### Tool Hygiene
 
-- ✅ All 15 tools have typed inputSchema
+- ✅ All 18 tools have typed inputSchema with MCP annotations (readOnlyHint, idempotentHint, openWorldHint)
 - ✅ Enum constraints for provider selection
 - ✅ Min/max bounds for monetary values
 - ✅ Clear parameter descriptions
-- ✅ Pricing tools (6): read-only, idempotent, safe for concurrent calls
-- ✅ Graph tools (9): read-only, cached, optimized for knowledge discovery
+- ✅ Pricing tools (8): read-only and idempotent, except `get_trial_key` (idempotent but not read-only — it creates a key)
+- ✅ Graph tools (10): read-only, cached, optimized for knowledge discovery
 
 ### Security & Privacy
 
 - HTTPS + TLS 1.2+
-- No API keys in query parameters (blocked by security middleware)
+- No API keys in query parameters (flagged by security middleware)
 - Anonymized request logging (IP, User-Agent, tool name only)
-- All tools are read-only — no mutations
+- 17 of 18 tools are read-only; `get_trial_key` is the one exception (creates a rate-limited trial key, non-destructive)
 - Input validation on all parameters
 
 ---
 
 ## Monitoring & Transparency
 
-**Live health grade:** https://wmcp.sh/mcp/grade/mcp.gogonka.com (Current: B, 85/100)
+**Live health grade:** https://wmcp.sh/mcp/grade/mcp.gogonka.com (check the page for the current score — it changes over time)
 
-**Monitored by:**
-- wmcp.sh — Every 30 minutes
-- chiark.ai — Every 30 minutes (reliability index)
-- agent-tools.cloud — Continuous
+This server is indexed and periodically scanned by several third-party MCP directories and quality graders (e.g. wmcp.sh, agent-tools.cloud); exact scan frequency is set by those services, not by us.
 
 ---
 
@@ -434,5 +454,5 @@ A: https://wmcp.sh/mcp/grade/mcp.gogonka.com (A-grade goal) | info@gogonka.com
 ---
 
 **License:** MIT  
-**Version:** 2.1.0 (audit fixes: trial-key conversion fields, AND doc search, actionable errors, rate-proof docs)  
+**Version:** 2.1.0 (audit fixes: trial-key conversion fields, AND doc search, actionable errors, rate-proof docs, README synced to the actual 18-tool/2-prompt surface, dead A2A badge removed)  
 **Last Updated:** July 16, 2026
