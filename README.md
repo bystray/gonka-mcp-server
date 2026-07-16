@@ -176,7 +176,7 @@ Find related concepts and topics connected to a given node.
 
 ---
 
-#### `god_nodes()`
+#### `get_god_nodes()`
 
 Get high-level overview — the most central and important concepts in the Gonka knowledge graph.
 
@@ -184,7 +184,7 @@ Get high-level overview — the most central and important concepts in the Gonka
 
 ---
 
-#### `graph_stats()`
+#### `get_graph_stats()`
 
 Get statistics about the knowledge graph: total nodes, communities, edges, last update time.
 
@@ -196,7 +196,7 @@ Get all concepts in a specific knowledge community (e.g., "FAQ", "Architecture",
 
 ---
 
-#### `shortest_path(node_a: str, node_b: str)`
+#### `find_shortest_path(node_a: str, node_b: str)`
 
 Find the shortest conceptual path between two ideas.
 
@@ -331,10 +331,10 @@ OPENAI_API_KEY=your_gonka_api_key_here
 
 **Flow 2: Technical Deep Dive (user cares about architecture)**
 1. User asks "How does Gonka work?" → **Call `query_graph("Gonka architecture network")`**
-2. Show top concepts → **Call `god_nodes()`**
+2. Show top concepts → **Call `get_god_nodes()`**
 3. User picks a topic → **Call `get_node(topic)` or `read_doc(doc_id)`**
 4. Explore relationships → **Call `get_neighbors(node_id)`**
-5. Deep dive → **Call `shortest_path(concept_a, concept_b)`**
+5. Deep dive → **Call `find_shortest_path(concept_a, concept_b)`**
 
 **Flow 3: Combined (technical validation before switching)**
 1. User asks about Gonka → Show pricing via Flow 1
