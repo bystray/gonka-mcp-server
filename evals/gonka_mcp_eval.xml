@@ -1,0 +1,50 @@
+<evaluation>
+  <!--
+    Gonka MCP tool-use eval - created 2026-07-16 (tools audit).
+    Each question must be answerable by an agent that has ONLY the Gonka MCP
+    server (mcp.gogonka.com) connected, using read-only tool calls.
+    Answers verified on 2026-07-16 against live tools and the wiki corpus.
+    Run after every change to tool names/descriptions/schemas and compare
+    pass rates. See mcp-builder skill reference/evaluation.md for runner scripts.
+  -->
+  <qa_pair>
+    <question>According to the Gonka gateway developer quickstart, what example escrow deposit amount in ngonka is shown (the amount that must be at least the on-chain min_amount)?</question>
+    <answer>5000000000</answer>
+  </qa_pair>
+  <qa_pair>
+    <question>What is the chain ID of the Gonka mainnet?</question>
+    <answer>gonka-mainnet</answer>
+  </qa_pair>
+  <qa_pair>
+    <question>Which Docker image (including tag) does the Gonka gateway developer quickstart use for the devshard gateway proxy?</question>
+    <answer>libermans/gonka-devshard-proxy:latest</answer>
+  </qa_pair>
+  <qa_pair>
+    <question>Which version of the inferenced CLI does the Gonka gateway developer quickstart require?</question>
+    <answer>v0.2.13</answer>
+  </qa_pair>
+  <qa_pair>
+    <question>In the Gonka FAQ example that shows how to find a seed node's P2P endpoint via listen_addr, what port number is used in the example?</question>
+    <answer>5000</answer>
+  </qa_pair>
+  <qa_pair>
+    <question>According to the Gonka hardware specifications, how many GB of VRAM does the NVIDIA H200 have?</question>
+    <answer>141</answer>
+  </qa_pair>
+  <qa_pair>
+    <question>What one-time fee percentage applies to USDT deposits on Gonka (while GNK deposits have a 0% fee)? Answer with the number only.</question>
+    <answer>5</answer>
+  </qa_pair>
+  <qa_pair>
+    <question>In the Gonka referral program, what percentage of the referee's deposit fee is the level-1 (L1) reward? Answer with the number only.</question>
+    <answer>10</answer>
+  </qa_pair>
+  <qa_pair>
+    <question>How many millions of nGNK does the Gonka welcome bonus give on signup? Answer with the number only.</question>
+    <answer>12</answer>
+  </qa_pair>
+  <qa_pair>
+    <question>Which model ID does the Gonka MCP server use as its reference model for pricing comparisons and in trial-key quick-start code examples?</question>
+    <answer>MiniMaxAI/MiniMax-M2.7</answer>
+  </qa_pair>
+</evaluation>
