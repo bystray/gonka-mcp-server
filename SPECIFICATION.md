@@ -208,15 +208,19 @@ removed deliberately — see AUDIT finding B4.)
 
 | File | Consumer | Notes |
 |---|---|---|
-| `mcp.json` | generic MCP catalogs | ⚠ lists only 5 of 18 tools; version 2.0.0 |
-| `server.json` | MCP official registry schema (2025-12-11) | `io.github.bystray/gonka-mcp-server`; fuller tool list |
+| `mcp.json` | generic MCP catalogs | all 18 tools; version 2.1.0 |
+| `server.json` | MCP official registry schema (2025-12-11) | `io.github.bystray/gonka-mcp-server`; full tool/prompt/resource list |
 | `smithery.yaml` | Smithery | HTTP endpoint config |
-| `.well-known/` | discovery | served by nginx |
+| `.well-known/mcp/server-card.json`, `.well-known/mcp-server-card.json` | discovery, served by nginx | kept as exact copies of `server.json` — update all three together |
 
-⚠ **Known drift** (not yet fixed, tracked for next release): manifests and
-README quote stale ratios ("6 800–7 681×" vs live ~13 500×), README's welcome
-bonus note ("~11 000 tokens") contradicts live data (~10.8 M tokens), and
-`mcp.json.tools` omits the docs group and trial key entirely.
+**Rate-proof rule (since 2.1.0):** static/published text (manifests, README,
+this spec) must not contain exact price ratios, USD prices, or token
+equivalents — those float with the GNK/USD rate. Static text says "orders of
+magnitude cheaper" and points at `get_pricing` / `pricing.json`; exact numbers
+live only in dynamic surfaces (tool responses, server instructions,
+`gonka://pricing-guide`), which are rebuilt from `pricing.json` on every
+read/initialize. Fixed quantities (12 M nGNK bonus, 100 K trial tokens,
+10 rpm, referral 10 %/3 %) may be stated statically.
 
 ## 12. Testing & Regression
 
@@ -242,4 +246,5 @@ bonus note ("~11 000 tokens") contradicts live data (~10.8 M tokens), and
 4. `read_doc` returns scraped-page navigation boilerplate; corpus contains 72
    `gonka-docs-full_partN.md` dump files that pollute `list_docs`; the graph
    has duplicate/multilingual node artifacts.
-5. Manifest drift (see §11).
+5. ~~Manifest drift~~ — fixed in 2.1.0 (see §11 rate-proof rule); registries
+   that snapshotted version 2.0.0 will refresh on their next crawl.

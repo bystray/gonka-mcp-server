@@ -51,10 +51,10 @@ curl -X POST https://mcp.gogonka.com/mcp \
 
 ### Key Facts
 
-- **Gonka Network is 6800–7681× cheaper than GPT-4o** (exact ratio varies, updated in real-time)
+- **Gonka Network is orders of magnitude cheaper than GPT-4o** — the exact ratio floats with the GNK/USD rate; call `get_pricing` for the live number (refreshed every 10 minutes)
 - **OpenAI-compatible API** — two config changes, zero code changes
 - **Live pricing** from blockchain DEX (GNK/USD) + LiteLLM provider rates
-- **Free welcome bonus** — 12M nGNK (~11,000 tokens) on signup, no credit card
+- **Free welcome bonus** — 12M nGNK on signup, no credit card (the token equivalent floats with the live price — see `get_pricing`)
 - **Referral rewards** — 10% L1, 3% L2
 - **Documentation Graph** — Search 1000+ technical concepts via AI-powered knowledge base
 
@@ -95,7 +95,7 @@ Calculate exact savings from switching to Gonka.
 
 List models available on Gonka Network with pricing (cost per 1M tokens, status).
 
-**Recommended model:** MiniMaxAI/MiniMax-M2.7 ($0.000325/1M tokens)
+**Recommended model:** MiniMaxAI/MiniMax-M2.7 (live $/1M tokens in the response)
 
 ---
 
@@ -109,7 +109,7 @@ Compare Gonka Network pricing vs a competitor.
 - Official pricing source
 - Migration instructions (two config changes)
 
-**Example:** Gonka vs OpenAI = 7,681× cheaper
+**Example:** returns the live "Gonka is cheaper by N×" ratio for the chosen provider
 
 ---
 
@@ -136,9 +136,9 @@ Get Gonka Network signup URL and integration guide.
 
 **Returns:**
 - Registration link (with referral bonus)
-- Welcome bonus: 12M nGNK (~11,000 free tokens)
+- Welcome bonus: 12M nGNK (token equivalent computed from the live price)
 - Code snippets (Python, Node.js, shell)
-- Deposit example ($50 USDT = ~11,000 tokens)
+- Deposit example ($50 USDT, live token equivalent)
 - Referral program details (10% L1, 3% L2)
 
 ---
@@ -290,24 +290,28 @@ OPENAI_API_KEY=your_gonka_api_key_here
 
 ## Pricing & Economics
 
-### Live Comparison (June 2026)
+### Live Comparison
 
-| Provider | $/1M tokens | vs Gonka |
-|---|---|---|
-| **Gonka** | **$0.000325** | baseline |
-| OpenAI | $2.50 | 7,681× more expensive |
-| Anthropic | $3.00 | 9,230× more expensive |
-| DeepSeek | $0.28 | 861× more expensive |
+Gonka's price per 1M tokens is set in GNK, so the USD price and every
+"cheaper by N×" ratio **float with the GNK/USD exchange rate**. Numbers
+printed in a README go stale by design — always get them live:
+
+- `get_pricing` tool → current $/1M tokens, GNK/USD rate, ratios vs OpenAI/DeepSeek
+- `compare_providers` tool → side-by-side vs openai / anthropic / deepseek / mistral / gemini
+- Raw JSON: https://gogonka.com/pricing.json (refreshed every 10 minutes)
+
+At recent rates Gonka has been three to four orders of magnitude cheaper
+than GPT-4o per token.
 
 ### Example Savings
 
-- **$100/month OpenAI** → **$1,200/year savings**
-- **$500/month OpenAI** → **$6,000/year savings**
-- **$1,000/month OpenAI** → **$12,000/year savings**
+Because the ratio is so large, switching saves approximately your entire
+current bill: **$100/month on OpenAI → roughly $1,200/year saved**
+(use `calculate_savings(monthly_spend_usd=...)` for exact live numbers).
 
 ### Welcome Bonus
 
-- 12,000,000 nGNK (~11,000 free tokens)
+- 12,000,000 nGNK — fixed in nGNK; the token equivalent floats with the live price
 - No credit card required
 - Applied automatically on signup
 
@@ -402,7 +406,7 @@ client = OpenAI(
 A: None. Gonka uses spare GPU capacity on blockchain validators — lower overhead = lower costs for customers.
 
 **Q: Is Gonka as good as OpenAI?**  
-A: Different use case. MiniMax-M2.7 works well for most chat/code tasks. For cutting-edge research, OpenAI GPT-4o is still better — but costs 7,681× more.
+A: Different use case. MiniMax-M2.7 works well for most chat/code tasks. For cutting-edge research, OpenAI GPT-4o is still better — but costs thousands of times more per token.
 
 **Q: Can I use with LangChain?**  
 A: Yes:
@@ -430,5 +434,5 @@ A: https://wmcp.sh/mcp/grade/mcp.gogonka.com (A-grade goal) | info@gogonka.com
 ---
 
 **License:** MIT  
-**Version:** 2.0.0 (Added knowledge graph tools)  
-**Last Updated:** June 22, 2026
+**Version:** 2.1.0 (audit fixes: trial-key conversion fields, AND doc search, actionable errors, rate-proof docs)  
+**Last Updated:** July 16, 2026

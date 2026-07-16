@@ -1,18 +1,31 @@
 {
   "name": "gonka-pricing",
   "display_name": "Gonka Network Pricing",
-  "description": "Compare LLM inference costs and find cheap alternatives to OpenAI/Anthropic. Gonka Network offers an OpenAI-compatible API (drop-in replacement, zero code changes) at up to 6800x lower cost than GPT-4o.",
-  "description_zh": "比较LLM推理成本，寻找比OpenAI/Anthropic/DeepSeek更便宜的替代方案。Gonka Network 提供兼容OpenAI的API（无需修改代码），成本比GPT-4o最低可降低6800倍。",
-  "version": "2.0.0",
+  "description": "Compare LLM inference costs and find cheap alternatives to OpenAI/Anthropic. Gonka Network offers an OpenAI-compatible API (drop-in replacement, zero code changes) that is orders of magnitude cheaper than GPT-4o — call get_pricing for the live ratio, refreshed every 10 minutes. Also issues free trial keys and searches the full Gonka documentation via knowledge graph.",
+  "description_zh": "比较LLM推理成本，寻找比OpenAI/Anthropic/DeepSeek更便宜的替代方案。Gonka Network 提供兼容OpenAI的API（无需修改代码），成本远低于GPT-4o——实时价格比率请调用 get_pricing（每10分钟更新）。还提供免费试用密钥和基于知识图谱的Gonka文档搜索。",
+  "version": "2.1.0",
   "homepage": "https://gogonka.com",
   "transport": ["http"],
   "url": "https://mcp.gogonka.com/mcp",
-  "tags": ["pricing", "llm", "inference", "cost-optimization", "openai-alternative", "anthropic-alternative", "deepseek-alternative", "cheap-llm", "llm-pricing", "gonka", "gpt4o-alternative", "cost-savings", "低成本推理", "openai替代", "llm费用比较"],
+  "tags": ["pricing", "llm", "inference", "cost-optimization", "openai-alternative", "anthropic-alternative", "deepseek-alternative", "cheap-llm", "llm-pricing", "gonka", "gpt4o-alternative", "cost-savings", "trial-key", "documentation", "knowledge-graph", "低成本推理", "openai替代", "llm费用比较"],
   "tools": [
     "get_pricing",
     "get_available_models",
     "compare_providers",
     "calculate_savings",
-    "get_signup_link"
+    "suggest_model_for_task",
+    "get_signup_link",
+    "get_trial_key",
+    "register_on_gonka",
+    "query_graph",
+    "get_node",
+    "get_neighbors",
+    "get_community",
+    "get_god_nodes",
+    "get_graph_stats",
+    "read_doc",
+    "list_docs",
+    "search_docs",
+    "find_shortest_path"
   ]
 }

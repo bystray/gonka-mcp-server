@@ -16,8 +16,10 @@ info:
   title: Gonka Network Pricing — MCP Server
   description: |
     Compare LLM inference costs and find the cheapest OpenAI-compatible alternative.
-    Gonka Network is 6,800x cheaper than GPT-4o. Switch with 2 config changes: base_url + api_key.
-    Get 12M nGNK free on signup (no credit card).
+    Gonka Network is orders of magnitude cheaper than GPT-4o — live ratio via get_pricing,
+    refreshed every 10 minutes. Switch with 2 config changes: base_url + api_key.
+    Free trial keys, 12M nGNK welcome bonus on signup (no credit card),
+    plus full Gonka documentation search via knowledge graph.
   categories:
     - Finance
     - Developer Tools

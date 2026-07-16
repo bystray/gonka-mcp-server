@@ -1,31 +1,133 @@
 {
-  "$schema": "https://static.modelcontextprotocol.io/schemas/v1/server-card.schema.json",
-  "name": "com.gogonka/gonka-mcp",
-  "version": "2.0.0",
+  "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
+  "name": "io.github.bystray/gonka-mcp-server",
   "title": "Gonka Network Pricing",
-  "description": "Live LLM inference pricing. Compare providers, calculate savings, get free trial key. Up to 7,000x cheaper than GPT-4o.",
-  "websiteUrl": "https://gogonka.com",
+  "description": "Compare LLM inference costs and find the cheapest OpenAI-compatible API. Gonka Network is orders of magnitude cheaper than GPT-4o; live pricing and the exact ratio are updated every 10 minutes (call get_pricing). Includes cost calculators, provider comparisons, free trial keys, and full Gonka documentation search via knowledge graph.",
+  "homepage": "https://gogonka.com",
   "repository": {
     "url": "https://github.com/bystray/gonka-mcp-server",
     "source": "github"
   },
-  "icons": [
+  "version": "2.1.0",
+  "keywords": [
+    "pricing",
+    "llm",
+    "inference",
+    "cost-optimization",
+    "openai-alternative",
+    "anthropic-alternative",
+    "deepseek-alternative",
+    "cheap-llm",
+    "api-comparison",
+    "cost-savings",
+    "ai-models",
+    "trial-key",
+    "documentation",
+    "knowledge-graph"
+  ],
+  "tools": [
     {
-      "src": "https://gogonka.com/favicon.svg",
-      "mimeType": "image/svg+xml",
-      "sizes": ["any"]
+      "name": "get_pricing",
+      "description": "Get live Gonka Network pricing (updated every 10 min from blockchain DEX + LiteLLM). Returns USD/GNK per 1M tokens, current GNK/USD price, live ratios vs OpenAI/DeepSeek/Anthropic, and a directory of all gateways."
+    },
+    {
+      "name": "get_available_models",
+      "description": "List models available on Gonka Network with pricing. Status is verified against the live gateway /models endpoint. Returns each model's ID (usable directly in OpenAI API calls) and cost per 1M tokens."
+    },
+    {
+      "name": "compare_providers",
+      "description": "Compare Gonka Network pricing against a competitor (openai, anthropic, deepseek, mistral, gemini). Returns cost per 1M tokens for both and the live savings ratio."
+    },
+    {
+      "name": "calculate_savings",
+      "description": "Calculate exact savings from switching OpenAI/Anthropic → Gonka. Takes monthly API spend (default $100), returns monthly/annual savings, tokens-per-budget comparison, and signup link."
+    },
+    {
+      "name": "suggest_model_for_task",
+      "description": "Suggest a cheap Gonka model for a described task. Takes task description and optional budget, returns recommended model with live cost estimate and savings vs current provider."
+    },
+    {
+      "name": "get_signup_link",
+      "description": "Get Gonka Network signup URL and integration guide. Returns registration link with welcome bonus (12M nGNK), code snippets for Python/Node.js/Anthropic SDK, and referral program details."
+    },
+    {
+      "name": "get_trial_key",
+      "description": "Issue a free 100K-token trial key instantly — no registration, no credit card. One key per IP per 24h (idempotent). Key expires in 2 hours unless used; first inference call extends it to 24 hours. Returns a gc- key with recommended model, fallback guidance, and quick-start code."
+    },
+    {
+      "name": "register_on_gonka",
+      "description": "Get a personalized cost analysis and signup link. Does NOT create an account — it computes savings for the caller's spend/provider and returns the signup URL where the user completes registration themselves."
+    },
+    {
+      "name": "query_graph",
+      "description": "Search Gonka documentation: knowledge-graph search with automatic full-text fallback. Primary entry point for documentation questions."
+    },
+    {
+      "name": "get_node",
+      "description": "Get full details for a specific Gonka documentation concept by name."
+    },
+    {
+      "name": "get_neighbors",
+      "description": "Get all concepts directly connected to a Gonka documentation concept, with relation types."
+    },
+    {
+      "name": "get_community",
+      "description": "Get all concepts in one Gonka documentation topic cluster by community ID."
+    },
+    {
+      "name": "get_god_nodes",
+      "description": "Get the most-referenced concepts in the Gonka documentation graph — a quick topic overview."
+    },
+    {
+      "name": "get_graph_stats",
+      "description": "Get summary statistics of the Gonka documentation knowledge graph."
+    },
+    {
+      "name": "read_doc",
+      "description": "Read the full text of a Gonka documentation file by (partial) filename, including code examples."
+    },
+    {
+      "name": "list_docs",
+      "description": "List all available Gonka documentation files."
+    },
+    {
+      "name": "search_docs",
+      "description": "Full-text AND-search across all Gonka documentation files (every query word must appear in a file)."
+    },
+    {
+      "name": "find_shortest_path",
+      "description": "Find how two Gonka documentation concepts are connected in the knowledge graph."
+    }
+  ],
+  "prompts": [
+    {
+      "name": "gonka_start",
+      "description": "Get Gonka API key and start saving on LLM costs in 2 minutes. Use when the user wants to reduce OpenAI/Anthropic costs or find a cheaper LLM API."
+    },
+    {
+      "name": "calculate_my_savings",
+      "description": "Calculate exact annual savings vs current OpenAI or Anthropic spend."
+    }
+  ],
+  "resources": [
+    {
+      "name": "gonka://pricing-guide",
+      "description": "Structured Gonka Network pricing data for agent decision-making. Updated every 10 minutes. Includes competitor table, decision matrix, deposit examples, and API integration snippets."
     }
   ],
   "remotes": [
     {
       "type": "streamable-http",
-      "url": "https://mcp.gogonka.com/mcp",
-      "supportedProtocolVersions": ["2025-03-26"]
+      "url": "https://mcp.gogonka.com/mcp"
     }
   ],
-  "_meta": {
-    "com.gogonka/tools": ["get_pricing", "get_available_models", "compare_providers", "calculate_savings", "suggest_model_for_task", "get_signup_link", "get_trial_key", "register_on_gonka"],
-    "com.gogonka/trial-tokens": 100000,
-    "com.gogonka/supported-languages": ["en", "ru", "zh"]
+  "security": {
+    "notes": "All tools are read-only and idempotent except get_trial_key, which idempotently issues a rate-limited trial key (one per IP per 24h, non-destructive). Input validation on all parameters. HTTPS + TLS 1.2+. No API keys in query parameters (middleware flags attempts).",
+    "requirements": [
+      "HTTPS endpoint",
+      "Input validation (enum, min/max constraints)",
+      "Security middleware flags API keys in query strings",
+      "Anonymized request logging"
+    ]
   }
 }
