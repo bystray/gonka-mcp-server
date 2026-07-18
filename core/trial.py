@@ -7,6 +7,8 @@ import urllib.request as _req
 from datetime import datetime, timedelta
 from typing import Optional
 
+from core.pricing import load_pricing, live_gateway_model_ids
+
 DB_URL        = "postgresql://gonka:gonka@localhost:5432/a2a_agent"
 # localhost:8646 bypasses a2a.gogonka.com's nginx, which unconditionally
 # overwrites X-Real-IP with $remote_addr — going through the public domain
@@ -17,6 +19,104 @@ AGENT_REFERRAL_URL = (
     "https://gate.joingonka.ai/register?ref=cf2bd855-ba1e-4b6e-8e56-9970049eec31"
 )
 DEFAULT_MODEL = "MiniMaxAI/MiniMax-M2.7"
+
+BASE_URL_OPENAI    = "https://gate.joingonka.ai/v1"
+BASE_URL_ANTHROPIC = "https://gate.joingonka.ai"
+
+FALLBACK_GUIDANCE = (
+    "If the recommended model returns model_unavailable or a "
+    "rate-limit error, retry the same request against "
+    "fallback_models in order — network-wide model load "
+    "shifts over minutes."
+)
+
+
+def _build_setup(api_key: str, model: str) -> dict:
+    """Copy-paste setup block returned with every trial key.
+
+    Kept in one place so the `issued` and `existing` branches return an
+    identical, self-contained instruction: which package to install, which
+    params to set (base_url, api_key, model), for both OpenAI and Anthropic
+    SDKs, plus a curl one-liner to verify the key before installing anything.
+    """
+    setup = {
+        "base_url": BASE_URL_OPENAI,
+        "base_url_anthropic": BASE_URL_ANTHROPIC,
+        "quick_start_openai": (
+            "pip install openai\n"
+            "\n"
+            "import openai\n"
+            "client = openai.OpenAI(\n"
+            f"    base_url='{BASE_URL_OPENAI}',\n"
+            f"    api_key='{api_key}'\n"
+            ")\n"
+            "response = client.chat.completions.create(\n"
+            f"    model='{model}',\n"
+            "    messages=[{\"role\": \"user\", \"content\": \"Hello!\"}]\n"
+            ")"
+        ),
+        "quick_start_anthropic": (
+            "pip install anthropic\n"
+            "\n"
+            "import anthropic\n"
+            "client = anthropic.Anthropic(\n"
+            f"    base_url='{BASE_URL_ANTHROPIC}',\n"
+            f"    api_key='{api_key}'\n"
+            ")\n"
+            "response = client.messages.create(\n"
+            f"    model='{model}',\n"
+            "    max_tokens=1024,\n"
+            "    messages=[{\"role\": \"user\", \"content\": \"Hello!\"}]\n"
+            ")"
+        ),
+        "quick_start_env": (
+            f"OPENAI_BASE_URL={BASE_URL_OPENAI}\n"
+            f"OPENAI_API_KEY={api_key}"
+        ),
+        "quick_start_curl": (
+            f"curl {BASE_URL_OPENAI}/chat/completions \\\n"
+            f"  -H 'Authorization: Bearer {api_key}' \\\n"
+            "  -H 'Content-Type: application/json' \\\n"
+            f"  -d '{{\"model\":\"{model}\",\"messages\":"
+            "[{\"role\":\"user\",\"content\":\"Hello!\"}]}'"
+        ),
+    }
+    # Back-compat: `quick_start` was the only snippet before this block existed.
+    setup["quick_start"] = setup["quick_start_openai"]
+    return setup
+
+
+def _model_catalog(recommended: str) -> tuple[list, list]:
+    """Return (available_models, fallback_models) from live pricing data.
+
+    Mirrors get_available_models (server.py): filter by the gateway's live
+    model ids when known; when the gateway is unreachable (live is None) keep
+    the static status rather than marking everything unavailable.
+    """
+    try:
+        data = load_pricing()
+        live = live_gateway_model_ids()
+    except Exception:
+        return [], []
+    available = []
+    for m in data.get("models", []):
+        mid = m.get("id")
+        if not mid:
+            continue
+        status = (
+            m.get("status") if live is None
+            else ("available" if mid.lower() in live else "unavailable")
+        )
+        available.append({
+            "id": mid,
+            "status": status,
+            "usd_per_1m_tokens": m.get("usd_per_1m_tokens_at_current"),
+        })
+    fallback = [
+        m["id"] for m in available
+        if m["id"] != recommended and m["status"] == "available"
+    ]
+    return available, fallback
 
 
 def _existing_key_by_ip(ip: str) -> Optional[dict]:
@@ -60,31 +160,25 @@ def request_trial_key(client_ip: str) -> dict:
         if hasattr(expires_at, "isoformat"):
             expires_at = expires_at.isoformat() + "Z"
         api_key = existing["gc_key"]
-        return {
+        available_models, fallback_models = _model_catalog(DEFAULT_MODEL)
+        result = {
             "status": "existing",
             "api_key": api_key,
-            "base_url": "https://gate.joingonka.ai/v1",
             "tokens_limit": existing["tokens_limit"],
             "expires_at": expires_at,
             "rate_limit_rpm": existing.get("rate_limit_rpm", 10),
             "note": "Reusing your existing trial key (one per IP per 24h).",
             "recommended_model": DEFAULT_MODEL,
-            "quick_start": (
-                "import openai\n"
-                "client = openai.OpenAI(\n"
-                "    base_url='https://gate.joingonka.ai/v1',\n"
-                f"    api_key='{api_key}'\n"
-                ")\n"
-                "response = client.chat.completions.create(\n"
-                f"    model='{DEFAULT_MODEL}',\n"
-                "    messages=[{\"role\": \"user\", \"content\": \"Hello!\"}]\n"
-                ")"
-            ),
+            "available_models": available_models,
+            "fallback_models": fallback_models,
+            "fallback_guidance": FALLBACK_GUIDANCE,
             "when_limit_reached": {
                 "error_to_catch": "child_key_limit_exceeded",
                 "signup_url": AGENT_REFERRAL_URL,
             },
         }
+        result.update(_build_setup(api_key, DEFAULT_MODEL))
+        return result
 
     # No existing key — delegate creation to inferGONKA
     payload = json.dumps({
@@ -107,10 +201,10 @@ def request_trial_key(client_ip: str) -> dict:
 
         if resp.get("status") == "success":
             tk = resp["trial_key"]
-            return {
+            recommended_model = resp.get("recommended_model", DEFAULT_MODEL)
+            result = {
                 "status": "issued",
                 "api_key": tk["api_key"],
-                "base_url": "https://gate.joingonka.ai/v1",
                 "tokens_limit": tk.get("tokens_limit", 100000),
                 "expires_at": tk.get("expires_at", ""),
                 "ttl_note": (
@@ -120,31 +214,16 @@ def request_trial_key(client_ip: str) -> dict:
                 ),
                 "rate_limit_rpm": tk.get("rate_limit_rpm", 10),
                 "available_models": resp.get("available_models", []),
-                "recommended_model": resp.get("recommended_model", DEFAULT_MODEL),
+                "recommended_model": recommended_model,
                 "fallback_models": resp.get("fallback_models", []),
-                "fallback_guidance": resp.get(
-                    "fallback_guidance",
-                    "If the recommended model returns model_unavailable or a "
-                    "rate-limit error, retry the same request against "
-                    "fallback_models in order — network-wide model load "
-                    "shifts over minutes.",
-                ),
+                "fallback_guidance": resp.get("fallback_guidance", FALLBACK_GUIDANCE),
                 "when_limit_reached": resp.get("when_limit_reached", {
                     "error_to_catch": "child_key_limit_exceeded",
                     "signup_url": AGENT_REFERRAL_URL,
                 }),
-                "quick_start": (
-                    "import openai\n"
-                    "client = openai.OpenAI(\n"
-                    f"    base_url='https://gate.joingonka.ai/v1',\n"
-                    f"    api_key='{tk['api_key']}'\n"
-                    ")\n"
-                    "response = client.chat.completions.create(\n"
-                    f"    model='{resp.get('recommended_model', DEFAULT_MODEL)}',\n"
-                    "    messages=[{\"role\": \"user\", \"content\": \"Hello!\"}]\n"
-                    ")"
-                ),
             }
+            result.update(_build_setup(tk["api_key"], recommended_model))
+            return result
         elif resp.get("status") == "waitlisted":
             return {
                 "status": "waitlisted",

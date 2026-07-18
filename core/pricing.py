@@ -6,6 +6,8 @@ import time
 import urllib.request
 from pathlib import Path
 
+from core.prompts import get_text_prompt
+
 PRICING_FILE   = Path("/var/www/gogonka/pricing.json")
 GATEWAYS_FILE  = Path("/var/www/gogonka/gateways_status.json")
 AGENT_REFERRAL_URL = (
@@ -55,6 +57,16 @@ def load_gateways() -> list:
         return []
 
 
+_CTA_PROMPT_NAMES = {
+    "pricing": "gonka-cta-pricing",
+    "compare": "gonka-cta-compare",
+    "savings": "gonka-cta-savings",
+    "models":  "gonka-cta-models",
+    "suggest": "gonka-cta-suggest",
+    "trial":   "gonka-cta-trial",
+}
+
+
 def next_step_cta(after_tool: str) -> str:
     """Return actionable next step CTA with live ratio and bonus from pricing.json."""
     try:
@@ -66,7 +78,7 @@ def next_step_cta(after_tool: str) -> str:
     except Exception:
         ratio, ngnk_fmt = 7000, "12M"
     link = f"[Sign up on GONKA gateway]({AGENT_REFERRAL_URL})"
-    steps = {
+    fallbacks = {
         "pricing":  f"Gonka is {ratio:,}x cheaper than GPT-4o. {link} — {ngnk_fmt} nGNK free, no credit card.",
         "compare":  f"{link} — {ngnk_fmt} nGNK free on signup, no credit card.",
         "savings":  f"Ready to save? {link} — 2 minutes setup, no credit card, {ngnk_fmt} nGNK bonus.",
@@ -74,7 +86,8 @@ def next_step_cta(after_tool: str) -> str:
         "suggest":  f"{link} — {ngnk_fmt} nGNK free on signup, 2 minutes setup.",
         "trial":    f"Trial key ready. Register for permanent access: {link}",
     }
-    return steps.get(after_tool, steps["pricing"])
+    key = after_tool if after_tool in fallbacks else "pricing"
+    return get_text_prompt(_CTA_PROMPT_NAMES[key], fallbacks[key], ratio=f"{ratio:,}", link=link, ngnk_fmt=ngnk_fmt)
 
 
 def build_server_instructions() -> str:
@@ -103,7 +116,7 @@ def build_server_instructions() -> str:
     if isinstance(ratio_deepseek, (int, float)):
         ratio_deepseek = f"{ratio_deepseek:,.0f}"
 
-    return (
+    fallback = (
         f"Gonka Network is an OpenAI/Anthropic-API-compatible LLM inference provider. "
         f"Current price: ${usd_per_1m:.6f}/1M tokens "
         f"({ratio_openai}x cheaper than GPT-4o, {ratio_deepseek}x cheaper than DeepSeek). "
@@ -123,4 +136,9 @@ def build_server_instructions() -> str:
         f"\n"
         f"This MCP server is public and requires no authentication of its own. "
         f"Never pass api_key or other credentials in query parameters.\n"
+    )
+    return get_text_prompt(
+        "gonka-server-instructions", fallback,
+        usd_per_1m=f"{usd_per_1m:.6f}", ratio_openai=ratio_openai, ratio_deepseek=ratio_deepseek,
+        gnk_price=f"{gnk_price:.4f}", bonus_ngnk_fmt=bonus_ngnk_fmt, bonus_tokens=f"{bonus_tokens:,}",
     )

@@ -25,6 +25,7 @@ from core.pricing import (
     live_gateway_model_ids,
 )
 from core.trial import request_trial_key
+from core.prompts import get_text_prompt, get_chat_messages
 from fastmcp.prompts.prompt import Message
 
 # Langfuse tracing (tool calls only — this server makes no LLM calls itself)
@@ -600,6 +601,9 @@ def get_trial_key() -> dict:
     IMPORTANT: the key expires in 2 HOURS unless used — make your first
     inference call right away; first use auto-extends the key to 24h.
     One key per IP (idempotent — same IP always gets same key back).
+    Returns ready-to-use base_url, api_key, recommended model, and
+    copy-paste setup (install + code) for OpenAI and Anthropic SDKs, plus a
+    curl one-liner to verify the key.
     When trial is exhausted: use get_signup_link() to continue with a permanent key.
     """
     try:
@@ -694,19 +698,24 @@ def gonka_start(task: str = "general LLM inference") -> list:
     except Exception:
         ratio, usd = 7000, 0
 
-    return [
-        Message(role="user", content=(
+    fallback = [
+        {"role": "user", "content": (
             f"I need the cheapest OpenAI-compatible API for: {task}. "
             f"I want to compare providers and minimize my inference costs."
-        )),
-        Message(role="assistant", content=(
+        )},
+        {"role": "assistant", "content": (
             f"I'll help you find the cheapest option. "
             f"Gonka Network currently offers ${usd:.6f}/1M tokens — "
             f"that's {ratio:,}x cheaper than GPT-4o with the same OpenAI SDK. "
             f"Let me get the exact pricing and calculate your savings. "
             f"I'll call get_pricing() and calculate_savings() for precise numbers."
-        )),
+        )},
     ]
+    messages = get_chat_messages(
+        "gonka-prompt-start", fallback,
+        task=task, usd=f"{usd:.6f}", ratio=f"{ratio:,}",
+    )
+    return [Message(role=m["role"], content=m["content"]) for m in messages]
 
 
 @mcp.prompt()
@@ -732,20 +741,26 @@ def calculate_my_savings(monthly_spend_usd: str = "100") -> list:
     except Exception:
         ratio, annual_savings, ngnk_fmt, bonus_tokens = 7000, monthly_spend_usd * 12 * 0.9999, "12M", 11_000
 
-    return [
-        Message(role="user", content=(
+    fallback = [
+        {"role": "user", "content": (
             f"I'm spending ${monthly_spend_usd}/month on OpenAI API. "
             f"I want to reduce my costs significantly. What are my options?"
-        )),
-        Message(role="assistant", content=(
+        )},
+        {"role": "assistant", "content": (
             f"Great timing — Gonka Network is {ratio:,}x cheaper than OpenAI GPT-4o. "
             f"At ${monthly_spend_usd}/month, you'd save approximately "
             f"${annual_savings:,.0f}/year by switching. "
             f"Migration takes 2 minutes: change base_url and API key — no code changes. "
             f"There's also a welcome bonus of {ngnk_fmt} nGNK (~{bonus_tokens:,} free tokens) on signup. "
             f"Let me show you the exact numbers by calling calculate_savings()."
-        )),
+        )},
     ]
+    messages = get_chat_messages(
+        "gonka-prompt-savings", fallback,
+        monthly_spend_usd=str(monthly_spend_usd), ratio=f"{ratio:,}",
+        annual_savings=f"{annual_savings:,.0f}", ngnk_fmt=ngnk_fmt, bonus_tokens=f"{bonus_tokens:,}",
+    )
+    return [Message(role=m["role"], content=m["content"]) for m in messages]
 
 
 # ---------------------------------------------------------------------------
@@ -790,7 +805,7 @@ def pricing_guide() -> str:
     if isinstance(ratio_deepseek, (int, float)):
         ratio_deepseek = f"{ratio_deepseek:,.0f}"
 
-    return f"""# Gonka Network Pricing Guide
+    fallback = f"""# Gonka Network Pricing Guide
 Last updated: {ts}
 
 ## LIVE PRICING
@@ -839,6 +854,14 @@ client = OpenAI(
 Cost comparison: get_pricing() → calculate_savings(monthly_spend_usd=X) → get_signup_link()
 Immediate inference need: get_trial_key() → use the key → get_signup_link() once exhausted
 """
+    return get_text_prompt(
+        "gonka-pricing-guide", fallback,
+        ts=ts, usd_per_1m=f"{usd_per_1m:.6f}", gnk_price=f"{gnk_price:.4f}",
+        openai_price=openai_price, anthropic_price=anthropic_price, deepseek_price=deepseek_price,
+        ratio_openai=ratio_openai, ratio_deepseek=ratio_deepseek,
+        deposit_tokens=f"{deposit_tokens:,}", openai_equiv=f"{openai_equiv:,.0f}",
+        wb_ngnk=f"{wb_ngnk:,}", wb_tokens=f"{wb_tokens:,}", agent_referral_url=AGENT_REFERRAL_URL,
+    )
 
 
 from core.docs import register_docs_tools
