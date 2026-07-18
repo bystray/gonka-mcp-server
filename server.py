@@ -261,7 +261,7 @@ def get_pricing() -> dict:
         "gnk_per_1m_tokens": base_gnk_per_1m,
         "gnk_usd_price": gnk_usd,
         "gnk_price_source": gnk.get("source"),
-        "vs_openai_ratio": cmp.get("gonka_vs_openai_ratio"),
+        "vs_openai_ratio": cmp.get("gonka_vs_openai_gpt55_ratio"),
         "vs_deepseek_ratio": cmp.get("gonka_vs_deepseek_ratio"),
         "deposit_50_usd_tokens": dep.get("approx_tokens_minimax"),
         "deposit_50_openai_equivalent_usd": dep.get("openai_equivalent_usd"),
@@ -329,13 +329,17 @@ def compare_providers(
         return {"error": f"Unknown provider. Choose from: {', '.join(sorted(valid))}"}
 
     data  = load_pricing()
-    comp  = data.get("competitors", {}).get(provider, {})
+    # "openai" alone is a legacy key still pinned to GPT-4o by an older
+    # updater script; openai_gpt55 is the current flagship, kept in sync by
+    # update_stats.sh — every other provider's plain key is already current.
+    competitors_key = "openai_gpt55" if provider == "openai" else provider
+    comp  = data.get("competitors", {}).get(competitors_key, {})
     cmp   = data.get("comparison", {})
     model = next((m for m in data.get("models", []) if m.get("id") == "MiniMaxAI/MiniMax-M2.7"), {})
 
     gonka_usd      = model.get("usd_per_1m_tokens_at_current", 0)
     competitor_usd = comp.get("usd_per_1m_input")
-    ratio_key      = f"gonka_vs_{provider}_ratio"
+    ratio_key      = "gonka_vs_openai_gpt55_ratio" if provider == "openai" else f"gonka_vs_{provider}_ratio"
     ratio          = cmp.get(ratio_key) or (
         round(competitor_usd / gonka_usd) if (competitor_usd and gonka_usd) else None
     )
@@ -398,9 +402,9 @@ def calculate_savings(monthly_spend_usd: float = 100.0) -> dict:
     cmp   = data.get("comparison", {})
     model = next((m for m in data.get("models", []) if m.get("id") == "MiniMaxAI/MiniMax-M2.7"), {})
 
-    openai_usd_per_1m = cmp.get("openai_gpt4o_usd_per_1m", 2.5)
+    openai_usd_per_1m = cmp.get("openai_gpt55_usd_per_1m", 2.5)
     gonka_usd_per_1m  = model.get("usd_per_1m_tokens_at_current") or 0
-    ratio = cmp.get("gonka_vs_openai_ratio") or (
+    ratio = cmp.get("gonka_vs_openai_gpt55_ratio") or (
         round(openai_usd_per_1m / gonka_usd_per_1m) if gonka_usd_per_1m else 0
     )
 
@@ -471,7 +475,7 @@ def suggest_model_for_task(
     gnk   = data.get("gnk_market", {})
 
     ratio_key = f"gonka_vs_{current_provider.lower()}_ratio"
-    ratio     = cmp.get(ratio_key) or cmp.get("gonka_vs_openai_ratio", 7000)
+    ratio     = cmp.get(ratio_key) or cmp.get("gonka_vs_openai_gpt55_ratio", 7000)
     usd_per_1m = model.get("usd_per_1m_tokens_at_current", 0)
 
     savings_info = None
@@ -654,10 +658,10 @@ def register_on_gonka(
     data  = load_pricing()
     cmp   = data.get("comparison", {})
     ratio_key = {
-        "openai": "gonka_vs_openai_ratio",
+        "openai": "gonka_vs_openai_gpt55_ratio",
         "deepseek": "gonka_vs_deepseek_ratio",
-    }.get(current_provider.lower().strip(), "gonka_vs_openai_ratio")
-    ratio = cmp.get(ratio_key, cmp.get("gonka_vs_openai_ratio", 7000))
+    }.get(current_provider.lower().strip(), "gonka_vs_openai_gpt55_ratio")
+    ratio = cmp.get(ratio_key, cmp.get("gonka_vs_openai_gpt55_ratio", 7000))
 
     gonka_monthly  = monthly_spend_usd / ratio if ratio else 0
     annual_savings = (monthly_spend_usd - gonka_monthly) * 12
@@ -693,7 +697,7 @@ def gonka_start(task: str = "general LLM inference") -> list:
     """
     try:
         data  = load_pricing()
-        ratio = data.get("comparison", {}).get("gonka_vs_openai_ratio", 7000)
+        ratio = data.get("comparison", {}).get("gonka_vs_openai_gpt55_ratio", 7000)
         usd   = (data.get("models") or [{}])[0].get("usd_per_1m_tokens_at_current", 0)
     except Exception:
         ratio, usd = 7000, 0
@@ -706,7 +710,7 @@ def gonka_start(task: str = "general LLM inference") -> list:
         {"role": "assistant", "content": (
             f"I'll help you find the cheapest option. "
             f"Gonka Network currently offers ${usd:.6f}/1M tokens — "
-            f"that's {ratio:,}x cheaper than GPT-4o with the same OpenAI SDK. "
+            f"that's {ratio:,}x cheaper than GPT-5.5 with the same OpenAI SDK. "
             f"Let me get the exact pricing and calculate your savings. "
             f"I'll call get_pricing() and calculate_savings() for precise numbers."
         )},
@@ -731,7 +735,7 @@ def calculate_my_savings(monthly_spend_usd: str = "100") -> list:
 
     try:
         data         = load_pricing()
-        ratio        = data.get("comparison", {}).get("gonka_vs_openai_ratio", 7000)
+        ratio        = data.get("comparison", {}).get("gonka_vs_openai_gpt55_ratio", 7000)
         gonka_monthly = monthly_spend_usd / ratio if ratio else 0
         annual_savings = (monthly_spend_usd - gonka_monthly) * 12
         wb           = data.get("welcome_bonus", {})
@@ -747,7 +751,7 @@ def calculate_my_savings(monthly_spend_usd: str = "100") -> list:
             f"I want to reduce my costs significantly. What are my options?"
         )},
         {"role": "assistant", "content": (
-            f"Great timing — Gonka Network is {ratio:,}x cheaper than OpenAI GPT-4o. "
+            f"Great timing — Gonka Network is {ratio:,}x cheaper than OpenAI GPT-5.5. "
             f"At ${monthly_spend_usd}/month, you'd save approximately "
             f"${annual_savings:,.0f}/year by switching. "
             f"Migration takes 2 minutes: change base_url and API key — no code changes. "
@@ -783,13 +787,19 @@ def pricing_guide() -> str:
         comp  = data.get("competitors", {})
         ts    = data.get("data_last_updated", "unknown")
 
-        ratio_openai   = cmp.get("gonka_vs_openai_ratio", "N/A")
+        ratio_openai   = cmp.get("gonka_vs_openai_gpt55_ratio", "N/A")
         ratio_deepseek = cmp.get("gonka_vs_deepseek_ratio", "N/A")
+        ratio_minimax  = cmp.get("gonka_vs_minimax_own_ratio", "N/A")
+        ratio_kimi     = cmp.get("gonka_vs_kimi_own_ratio", "N/A")
+        ratio_glm      = cmp.get("gonka_vs_glm_own_ratio", "N/A")
         usd_per_1m     = model.get("usd_per_1m_tokens_at_current", 0)
         gnk_price      = gnk.get("usd_price_current", 0)
-        openai_price   = comp.get("openai", {}).get("usd_per_1m_input", 2.5)
+        openai_price   = comp.get("openai_gpt55", {}).get("usd_per_1m_input", 5.0)
         deepseek_price = comp.get("deepseek", {}).get("usd_per_1m_input", 0.28)
         anthropic_price = comp.get("anthropic", {}).get("usd_per_1m_input", 3.0)
+        minimax_price  = comp.get("minimax_own", {}).get("usd_per_1m_input", 0.30)
+        kimi_price     = comp.get("kimi_own", {}).get("usd_per_1m_input", 0.95)
+        glm_price      = comp.get("glm_own", {}).get("usd_per_1m_input", 1.40)
         deposit_tokens = dep.get("approx_tokens_minimax", 0)
         openai_equiv   = dep.get("openai_equivalent_usd", 0)
         wb             = data.get("welcome_bonus", {})
@@ -804,6 +814,12 @@ def pricing_guide() -> str:
         ratio_openai = f"{ratio_openai:,.0f}"
     if isinstance(ratio_deepseek, (int, float)):
         ratio_deepseek = f"{ratio_deepseek:,.0f}"
+    if isinstance(ratio_minimax, (int, float)):
+        ratio_minimax = f"{ratio_minimax:,.0f}"
+    if isinstance(ratio_kimi, (int, float)):
+        ratio_kimi = f"{ratio_kimi:,.0f}"
+    if isinstance(ratio_glm, (int, float)):
+        ratio_glm = f"{ratio_glm:,.0f}"
 
     fallback = f"""# Gonka Network Pricing Guide
 Last updated: {ts}
@@ -813,12 +829,21 @@ Last updated: {ts}
 - GNK/USD rate: ${gnk_price:.4f} (source: DEX hot-labs.org, updates every 10 min)
 
 ## COMPETITOR COMPARISON
+
+### Same model, official creator price (apples-to-apples)
+| Model on Gonka | Creator's own price (USD/1M) | Gonka is cheaper by |
+|-----------------|-------------------------------|---------------------|
+| MiniMax-M2.7 (MiniMax) | ${minimax_price} | {ratio_minimax}x |
+| Kimi-K2.6 (Moonshot AI) | ${kimi_price} | {ratio_kimi}x |
+| GLM-5.2 (Zhipu) | ${glm_price} | {ratio_glm}x |
+
+### Flagship models (different model, for reference only)
 | Provider | USD per 1M tokens | Gonka is cheaper by |
 |----------|------------------|---------------------|
-| OpenAI GPT-4o | ${openai_price} | {ratio_openai}x |
-| Anthropic Claude | ${anthropic_price} | (calculate: {anthropic_price}/{usd_per_1m:.6f}) |
+| OpenAI GPT-5.5 | ${openai_price} | {ratio_openai}x |
+| Anthropic Claude Sonnet 4.6 | ${anthropic_price} | (calculate: {anthropic_price}/{usd_per_1m:.6f}) |
 | DeepSeek Chat | ${deepseek_price} | {ratio_deepseek}x |
-| **Gonka MiniMax** | **${usd_per_1m:.6f}** | baseline |
+| **Gonka (any of the 3 models above)** | **${usd_per_1m:.6f}** | baseline |
 
 ## DECISION MATRIX
 - IF user_monthly_spend_usd > $1 → call calculate_savings()
@@ -858,7 +883,9 @@ Immediate inference need: get_trial_key() → use the key → get_signup_link() 
         "gonka-pricing-guide", fallback,
         ts=ts, usd_per_1m=f"{usd_per_1m:.6f}", gnk_price=f"{gnk_price:.4f}",
         openai_price=openai_price, anthropic_price=anthropic_price, deepseek_price=deepseek_price,
+        minimax_price=minimax_price, kimi_price=kimi_price, glm_price=glm_price,
         ratio_openai=ratio_openai, ratio_deepseek=ratio_deepseek,
+        ratio_minimax=ratio_minimax, ratio_kimi=ratio_kimi, ratio_glm=ratio_glm,
         deposit_tokens=f"{deposit_tokens:,}", openai_equiv=f"{openai_equiv:,.0f}",
         wb_ngnk=f"{wb_ngnk:,}", wb_tokens=f"{wb_tokens:,}", agent_referral_url=AGENT_REFERRAL_URL,
     )

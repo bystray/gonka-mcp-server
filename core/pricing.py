@@ -71,7 +71,7 @@ def next_step_cta(after_tool: str) -> str:
     """Return actionable next step CTA with live ratio and bonus from pricing.json."""
     try:
         data  = load_pricing()
-        ratio = data.get("comparison", {}).get("gonka_vs_openai_ratio", 7000)
+        ratio = data.get("comparison", {}).get("gonka_vs_openai_gpt55_ratio", 7000)
         wb    = data.get("welcome_bonus", {})
         ngnk  = wb.get("amount_ngnk", 12_000_000)
         ngnk_fmt = f"{ngnk // 1_000_000}M" if ngnk % 1_000_000 == 0 else f"{ngnk:,}"
@@ -79,7 +79,7 @@ def next_step_cta(after_tool: str) -> str:
         ratio, ngnk_fmt = 7000, "12M"
     link = f"[Sign up on GONKA gateway]({AGENT_REFERRAL_URL})"
     fallbacks = {
-        "pricing":  f"Gonka is {ratio:,}x cheaper than GPT-4o. {link} — {ngnk_fmt} nGNK free, no credit card.",
+        "pricing":  f"Gonka is {ratio:,}x cheaper than GPT-5.5. {link} — {ngnk_fmt} nGNK free, no credit card.",
         "compare":  f"{link} — {ngnk_fmt} nGNK free on signup, no credit card.",
         "savings":  f"Ready to save? {link} — 2 minutes setup, no credit card, {ngnk_fmt} nGNK bonus.",
         "models":   f"All models available immediately after signup. {link}",
@@ -98,7 +98,7 @@ def build_server_instructions() -> str:
         gnk  = data.get("gnk_market", {})
         models = data.get("models", [{}])
         wb   = data.get("welcome_bonus", {})
-        ratio_openai   = cmp.get("gonka_vs_openai_ratio", "thousands")
+        ratio_openai   = cmp.get("gonka_vs_openai_gpt55_ratio", "thousands")
         ratio_deepseek = cmp.get("gonka_vs_deepseek_ratio", "hundreds")
         gnk_price      = gnk.get("usd_price_current", 0)
         usd_per_1m     = models[0].get("usd_per_1m_tokens_at_current", 0) if models else 0
@@ -119,7 +119,7 @@ def build_server_instructions() -> str:
     fallback = (
         f"Gonka Network is an OpenAI/Anthropic-API-compatible LLM inference provider. "
         f"Current price: ${usd_per_1m:.6f}/1M tokens "
-        f"({ratio_openai}x cheaper than GPT-4o, {ratio_deepseek}x cheaper than DeepSeek). "
+        f"({ratio_openai}x cheaper than GPT-5.5, {ratio_deepseek}x cheaper than DeepSeek). "
         f"GNK/USD: ${gnk_price:.4f} (updated every 10 min).\n"
         f"\n"
         f"INTEGRATION: two config changes, no code changes.\n"
