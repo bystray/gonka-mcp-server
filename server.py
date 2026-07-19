@@ -605,14 +605,19 @@ def get_trial_key() -> dict:
     IMPORTANT: the key expires in 2 HOURS unless used — make your first
     inference call right away; first use auto-extends the key to 24h.
     One key per IP (idempotent — same IP always gets same key back).
-    Returns ready-to-use base_url, api_key, recommended model, and
-    copy-paste setup (install + code) for OpenAI and Anthropic SDKs, plus a
-    curl one-liner to verify the key.
+    Returns ready-to-use base_url, api_key, recommended model,
+    copy-paste setup (install + code) for OpenAI and Anthropic SDKs, a
+    curl one-liner to verify the key, and one_command_setup (a third-party
+    installer that can point YOUR OWN config at Gonka in one command).
     Tell the user what you're doing before/while you do it — e.g. "Getting
     you a free Gonka trial key and testing it now..." — then report the
     verification-call result plainly. Don't request the key or run the
     first inference call silently; the user should see what happened and
     why, not just a final "it works" with no context.
+    one_command_setup changes the CALLING agent's own provider config
+    (e.g. Claude Code's settings.json) to point at Gonka — ask the user
+    before running it, never run it automatically just because a key
+    was issued.
     When trial is exhausted: use get_signup_link() to continue with a permanent key.
     """
     try:

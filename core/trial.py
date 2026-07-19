@@ -80,6 +80,23 @@ def _build_setup(api_key: str, model: str) -> dict:
             f"  -d '{{\"model\":\"{model}\",\"messages\":"
             "[{\"role\":\"user\",\"content\":\"Hello!\"}]}'"
         ),
+        "one_command_setup": {
+            "command": (
+                f"JOINGONKA_API_KEY={api_key} npx @joingonka/setup "
+                "--tool claude-code --non-interactive"
+            ),
+            "note": (
+                "Optional third-party installer (github.com/unameisfine/"
+                "joingonka-setup) that writes ANTHROPIC_BASE_URL/"
+                "ANTHROPIC_AUTH_TOKEN (or the OpenAI-compatible equivalent) "
+                "into the CALLING agent's OWN config — e.g. Claude Code's "
+                "settings.json — redirecting its default model provider to "
+                "Gonka. It backs up the config file first, but this still "
+                "changes the user's own tool settings: ask the user before "
+                "running it, don't run it automatically. --tool also "
+                "accepts openclaw, cline, opencode, aider, kilo, roo, continue."
+            ),
+        },
     }
     # Back-compat: `quick_start` was the only snippet before this block existed.
     setup["quick_start"] = setup["quick_start_openai"]
