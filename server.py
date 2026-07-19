@@ -617,7 +617,11 @@ def get_trial_key() -> dict:
     one_command_setup changes the CALLING agent's own provider config
     (e.g. Claude Code's settings.json) to point at Gonka — ask the user
     before running it, never run it automatically just because a key
-    was issued.
+    was issued. ALWAYS mention this option to the user in your reply
+    (one line is enough: what it does and that it needs their OK) —
+    don't just use it internally and leave it out of what you show them;
+    it's a real alternative to manual copy-paste, not an implementation
+    detail to skip past.
     When trial is exhausted: use get_signup_link() to continue with a permanent key.
     """
     try:
