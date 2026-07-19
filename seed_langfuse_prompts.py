@@ -79,6 +79,10 @@ Last updated: {{ts}}
 - IF user_asks_about_models → call suggest_model_for_task()
 - IF agent_needs_inference_key → call get_trial_key()
 - IF savings calculated → call get_signup_link()
+- ALWAYS narrate what you're doing before/while calling any of these tools
+  (e.g. "Getting a free trial key and testing it now...") — a silent
+  tool call followed by just a final result leaves the user unable to
+  tell what happened or why.
 
 ## DEPOSIT EXAMPLE ($50 USDT)
 - Tokens received: ~{{deposit_tokens}}

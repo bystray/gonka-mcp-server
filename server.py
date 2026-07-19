@@ -608,6 +608,11 @@ def get_trial_key() -> dict:
     Returns ready-to-use base_url, api_key, recommended model, and
     copy-paste setup (install + code) for OpenAI and Anthropic SDKs, plus a
     curl one-liner to verify the key.
+    Tell the user what you're doing before/while you do it — e.g. "Getting
+    you a free Gonka trial key and testing it now..." — then report the
+    verification-call result plainly. Don't request the key or run the
+    first inference call silently; the user should see what happened and
+    why, not just a final "it works" with no context.
     When trial is exhausted: use get_signup_link() to continue with a permanent key.
     """
     try:
@@ -851,6 +856,10 @@ Last updated: {ts}
 - IF user_asks_about_models → call suggest_model_for_task()
 - IF agent_needs_inference_key → call get_trial_key()
 - IF savings calculated → call get_signup_link()
+- ALWAYS narrate what you're doing before/while calling any of these tools
+  (e.g. "Getting a free trial key and testing it now...") — a silent
+  tool call followed by just a final result leaves the user unable to
+  tell what happened or why.
 
 ## DEPOSIT EXAMPLE ($50 USDT)
 - Tokens received: ~{deposit_tokens:,}
