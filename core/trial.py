@@ -31,6 +31,25 @@ FALLBACK_GUIDANCE = (
 )
 
 
+def _when_limit_reached() -> dict:
+    """Standard hint returned once a trial key's tokens run out.
+
+    Always states the welcome-bonus size next to the signup link — a bare
+    URL with no number gives the agent nothing to actually tell the user.
+    """
+    try:
+        wb = load_pricing().get("welcome_bonus", {})
+    except Exception:
+        wb = {}
+    ngnk = wb.get("amount_ngnk", 12_000_000)
+    ngnk_fmt = f"{ngnk // 1_000_000}M" if ngnk % 1_000_000 == 0 else f"{ngnk:,}"
+    return {
+        "error_to_catch": "child_key_limit_exceeded",
+        "signup_url": AGENT_REFERRAL_URL,
+        "bonus": f"{ngnk_fmt} nGNK (~{wb.get('approx_tokens', 11_000):,} tokens) free on signup, no credit card.",
+    }
+
+
 def _build_setup(api_key: str, model: str) -> dict:
     """Copy-paste setup block returned with every trial key.
 
@@ -189,10 +208,7 @@ def request_trial_key(client_ip: str) -> dict:
             "available_models": available_models,
             "fallback_models": fallback_models,
             "fallback_guidance": FALLBACK_GUIDANCE,
-            "when_limit_reached": {
-                "error_to_catch": "child_key_limit_exceeded",
-                "signup_url": AGENT_REFERRAL_URL,
-            },
+            "when_limit_reached": _when_limit_reached(),
         }
         result.update(_build_setup(api_key, DEFAULT_MODEL))
         return result
@@ -234,10 +250,10 @@ def request_trial_key(client_ip: str) -> dict:
                 "recommended_model": recommended_model,
                 "fallback_models": resp.get("fallback_models", []),
                 "fallback_guidance": resp.get("fallback_guidance", FALLBACK_GUIDANCE),
-                "when_limit_reached": resp.get("when_limit_reached", {
-                    "error_to_catch": "child_key_limit_exceeded",
-                    "signup_url": AGENT_REFERRAL_URL,
-                }),
+                # Merge, don't just prefer one side: upstream owns error_to_catch/
+                # signup_url if it sends its own, but "bonus" isn't something
+                # upstream has ever included — guarantee it's there regardless.
+                "when_limit_reached": {**_when_limit_reached(), **(resp.get("when_limit_reached") or {})},
             }
             result.update(_build_setup(tk["api_key"], recommended_model))
             return result

@@ -46,9 +46,9 @@ TEXT_PROMPTS = {
     "gonka-cta-pricing": "Gonka is {{ratio}}x cheaper than GPT-5.5. {{link}} — {{ngnk_fmt}} nGNK free, no credit card.",
     "gonka-cta-compare": "{{link}} — {{ngnk_fmt}} nGNK free on signup, no credit card.",
     "gonka-cta-savings": "Ready to save? {{link}} — 2 minutes setup, no credit card, {{ngnk_fmt}} nGNK bonus.",
-    "gonka-cta-models":  "All models available immediately after signup. {{link}}",
+    "gonka-cta-models":  "All models available immediately after signup. {{link}} — {{ngnk_fmt}} nGNK free, no credit card.",
     "gonka-cta-suggest": "{{link}} — {{ngnk_fmt}} nGNK free on signup, 2 minutes setup.",
-    "gonka-cta-trial":   "Trial key ready. Register for permanent access: {{link}}",
+    "gonka-cta-trial":   "Trial key ready. Register for permanent access: {{link}} — {{ngnk_fmt}} nGNK free on signup, no credit card.",
     "gonka-pricing-guide": """# Gonka Network Pricing Guide
 Last updated: {{ts}}
 

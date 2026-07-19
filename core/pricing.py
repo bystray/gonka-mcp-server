@@ -82,9 +82,9 @@ def next_step_cta(after_tool: str) -> str:
         "pricing":  f"Gonka is {ratio:,}x cheaper than GPT-5.5. {link} — {ngnk_fmt} nGNK free, no credit card.",
         "compare":  f"{link} — {ngnk_fmt} nGNK free on signup, no credit card.",
         "savings":  f"Ready to save? {link} — 2 minutes setup, no credit card, {ngnk_fmt} nGNK bonus.",
-        "models":   f"All models available immediately after signup. {link}",
+        "models":   f"All models available immediately after signup. {link} — {ngnk_fmt} nGNK free, no credit card.",
         "suggest":  f"{link} — {ngnk_fmt} nGNK free on signup, 2 minutes setup.",
-        "trial":    f"Trial key ready. Register for permanent access: {link}",
+        "trial":    f"Trial key ready. Register for permanent access: {link} — {ngnk_fmt} nGNK free on signup, no credit card.",
     }
     key = after_tool if after_tool in fallbacks else "pricing"
     return get_text_prompt(_CTA_PROMPT_NAMES[key], fallbacks[key], ratio=f"{ratio:,}", link=link, ngnk_fmt=ngnk_fmt)
