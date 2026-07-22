@@ -2,17 +2,19 @@
   "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
   "name": "io.github.bystray/gonka-mcp-server",
   "title": "Gonka Network — AI Inference Fuel",
-  "description": "Fuels AI agents with cheap inference in the decentralized GONKA network: a free no-signup trial key, live price comparison vs OpenAI/Anthropic, and documentation search. After testing, the agent unlocks permanent access with a welcome bonus — 12M nGNK in free tokens — via the signup link.",
+  "description": "Fuels AI agents with cheap inference in the decentralized GONKA network: run LLM inference through the server (a free no-signup trial key, or the caller's own key), get multi-model second opinions, compare live prices vs OpenAI/Anthropic, and search the documentation. After testing, the agent unlocks permanent access with a welcome bonus — 12M nGNK in free tokens — via the signup link.",
   "homepage": "https://gogonka.com",
   "repository": {
     "url": "https://github.com/bystray/gonka-mcp-server",
     "source": "github"
   },
-  "version": "2.1.0",
+  "version": "2.2.0",
   "keywords": [
     "pricing",
     "llm",
     "inference",
+    "inference-proxy",
+    "second-opinion",
     "cost-optimization",
     "openai-alternative",
     "anthropic-alternative",
@@ -53,6 +55,14 @@
     {
       "name": "get_trial_key",
       "description": "Issue a free 100K-token trial key instantly — no registration, no credit card. One key per IP per 24h (idempotent). Key expires in 2 hours unless used; first inference call extends it to 24 hours. Returns a gc- key with recommended model, fallback guidance, and quick-start code."
+    },
+    {
+      "name": "gonka_chat",
+      "description": "Run an LLM completion on Gonka through this server — no outbound network or config change needed on the caller's side. Free trial by default (per-IP budget, converts to signup on exhaustion); if the caller adds their own Gonka key in their MCP client settings (Authorization: Bearer) it runs on their own balance with no trial limit. Supports model nicknames (minimax, kimi) and 'auto' selection over the live models."
+    },
+    {
+      "name": "gonka_second_opinion",
+      "description": "Get a second opinion: run one prompt across the live Gonka models — and optional role/stance perspectives (e.g. proponent, skeptic, pragmatist) — in parallel, returning each answer for comparison. Lets an agent test a hypothesis or sanity-check a decision without switching its main model. Same trial / bring-your-own-key modes as gonka_chat."
     },
     {
       "name": "register_on_gonka",
@@ -122,7 +132,7 @@
     }
   ],
   "security": {
-    "notes": "All tools are read-only and idempotent except get_trial_key, which idempotently issues a rate-limited trial key (one per IP per 24h, non-destructive). Input validation on all parameters. HTTPS + TLS 1.2+. No API keys in query parameters (middleware flags attempts).",
+    "notes": "Pricing and documentation tools are read-only. get_trial_key issues a rate-limited trial key (one per IP per 24h, non-destructive). gonka_chat and gonka_second_opinion proxy LLM inference — under a trial key by default (per-IP daily rate limit), or under the caller's own key supplied via the Authorization: Bearer header; caller keys are read from the header only, never logged. Input validation on all parameters. HTTPS + TLS 1.2+. No API keys in query parameters (middleware flags attempts).",
     "requirements": [
       "HTTPS endpoint",
       "Input validation (enum, min/max constraints)",

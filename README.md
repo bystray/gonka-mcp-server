@@ -1,11 +1,11 @@
 # Gonka Network MCP Server
 
-**All-in-one MCP server for Gonka Network:** live pricing, cost comparisons, AI model recommendations, and access to complete technical documentation via knowledge graph search.
+**All-in-one MCP server for Gonka Network:** run LLM inference through the server (free trial key or your own), get multi-model second opinions, plus live pricing, cost comparisons, model recommendations, and technical documentation via knowledge-graph search.
 
 Helps AI agents and developers:
-- Find the cheapest OpenAI-compatible LLM inference
-- Learn how Gonka Network architecture works
-- Make informed decisions about provider switching
+- Run cheap inference on Gonka right from the chat — free trial, or your own key
+- Get a second opinion from multiple models before committing to an answer
+- Find the cheapest OpenAI-compatible LLM inference and learn how Gonka works
 
 **Live at:** `https://mcp.gogonka.com/mcp`
 
@@ -42,13 +42,15 @@ curl -X POST https://mcp.gogonka.com/mcp \
 
 ## What This Server Does
 
-**Two sides of one mission:**
+**Three sides of one mission:**
 
-1. **Cost Intelligence** — Compare LLM inference costs and find alternatives to OpenAI/Anthropic/DeepSeek with live pricing updated every 10 minutes
-2. **Knowledge Discovery** — Search and explore Gonka Network documentation via knowledge graph (architecture, concepts, troubleshooting)
+1. **Inference** — Run LLM completions and multi-model second opinions through the server, on a free trial key or your own Gonka key (no config change on the agent's side)
+2. **Cost Intelligence** — Compare LLM inference costs and find alternatives to OpenAI/Anthropic/DeepSeek with live pricing updated every 10 minutes
+3. **Knowledge Discovery** — Search and explore Gonka Network documentation via knowledge graph (architecture, concepts, troubleshooting)
 
 ### Key Facts
 
+- **Inference through the server** — `gonka_chat` and `gonka_second_opinion` make the gateway call for you (no outbound network / config change on the agent's side); free trial by default, or your own key for your own balance
 - **Gonka Network is orders of magnitude cheaper than GPT-4o** — the exact ratio floats with the GNK/USD rate; call `get_pricing` for the live number (refreshed every 10 minutes)
 - **OpenAI-compatible API** — two config changes, zero code changes
 - **Live pricing** from blockchain DEX (GNK/USD) + LiteLLM provider rates
@@ -58,7 +60,33 @@ curl -X POST https://mcp.gogonka.com/mcp \
 
 ---
 
-## Tools (18 Total)
+## Tools (20 Total)
+
+### Inference (2 tools)
+
+Run LLM inference **through this server** — it makes the gateway call for you, so an agent needs no outbound network access and no config change to use Gonka.
+
+**Two modes, detected automatically:**
+
+- **Trial (default):** a free trial key is issued per caller IP. Budget-limited; when it runs out you get a signup link + welcome bonus to relay to the user. A per-IP daily rate limit applies.
+- **Bring your own key:** paste your Gonka key (`jg-…`) into your MCP client's server settings — the *API key* / *Bearer token* field. It arrives as `Authorization: Bearer …`, and every call then runs on **your own balance** with no trial limits. Works in any MCP client that lets you set an API key/header (LibreChat, Cursor, Claude Code, …). The key is read from the header only and never logged.
+
+#### `gonka_chat(prompt: str, system: str = "", model: str = "auto", max_tokens: int = 1024)`
+
+Run one LLM completion on Gonka.
+
+- `model`: `"auto"` (default — picks a live model), a nickname (`"minimax"`, `"kimi"`), or an exact model id. A model that isn't live right now is automatically routed to one that is.
+- **Returns:** `{response, model, usage, trial_budget}` (trial) or `{response, model, usage, cost}` (own key). Near the trial limit you also get a soft `budget_warning`; on exhaustion you get usage stats + signup link + bonus, with instructions to relay to the user.
+
+#### `gonka_second_opinion(prompt: str, system: str = "", perspectives: list[str] = [], max_tokens: int = 768)`
+
+Get a **second opinion** without switching your main model: run one prompt across Gonka models in parallel and compare the answers.
+
+- Leave `perspectives` empty → one opinion per live model.
+- Pass `perspectives` (short roles/stances, max 5) → one opinion per perspective, each answered candidly from that viewpoint and rotated across the live models. Examples: `["proponent","skeptic","pragmatist"]`, `["for","against","neutral"]`, `["security expert","product manager","end user"]`.
+- **Returns:** `{opinions: [{model, perspective?, response}], synthesis_instructions, trial_budget|cost}`. Attribute each opinion to its model + perspective when you present them. More opinions cost more budget and count toward the per-IP daily limit.
+
+---
 
 ### Pricing & Cost Analysis (8 tools)
 
@@ -349,6 +377,12 @@ current bill: **$100/month on OpenAI → roughly $1,200/year saved**
 
 ### Recommended Conversation Flows
 
+**Flow 0: Try Gonka inference now (no signup)**
+1. User wants to try Gonka, or you want a cheap sub-task / second view → **Call `gonka_chat(prompt)`** (free trial, runs on the server)
+2. Want multiple viewpoints before committing → **Call `gonka_second_opinion(prompt, perspectives=[...])`**
+3. Trial budget runs out → relay the returned signup link + welcome bonus to the user
+4. User registers → they paste their own key into the MCP client settings → same tools now run on their balance
+
 **Flow 1: Cost Optimization (user cares about price)**
 1. User mentions expensive LLM bills → **Call `get_pricing()`**
 2. Show live costs → **Call `calculate_savings(user_spend)`**
@@ -370,10 +404,11 @@ current bill: **$100/month on OpenAI → roughly $1,200/year saved**
 
 ### Tool Hygiene
 
-- ✅ All 18 tools have typed inputSchema with MCP annotations (readOnlyHint, idempotentHint, openWorldHint)
+- ✅ All 20 tools have typed inputSchema with MCP annotations (readOnlyHint, idempotentHint, openWorldHint)
 - ✅ Enum constraints for provider selection
 - ✅ Min/max bounds for monetary values
 - ✅ Clear parameter descriptions
+- ✅ Inference tools (2): `gonka_chat`, `gonka_second_opinion` — not read-only and not idempotent (they run an LLM call); trial mode is per-IP rate-limited
 - ✅ Pricing tools (8): read-only and idempotent, except `get_trial_key` (idempotent but not read-only — it creates a key)
 - ✅ Graph tools (10): read-only, cached, optimized for knowledge discovery
 
@@ -381,8 +416,9 @@ current bill: **$100/month on OpenAI → roughly $1,200/year saved**
 
 - HTTPS + TLS 1.2+
 - No API keys in query parameters (flagged by security middleware)
-- Anonymized request logging (IP, User-Agent, tool name only)
-- 17 of 18 tools are read-only; `get_trial_key` is the one exception (creates a rate-limited trial key, non-destructive)
+- Anonymized request logging (IP, User-Agent, tool name only) — inference prompts are truncated and caller keys are never logged
+- **Bring-your-own-key** is read from the `Authorization` header only, forwarded to the Gonka gateway, and never stored or returned
+- Read-only: the 8 pricing/cost tools (minus `get_trial_key`) and the 10 graph tools. Not read-only: `get_trial_key` (creates a rate-limited trial key) and `gonka_chat` / `gonka_second_opinion` (proxy an LLM call; trial mode is per-IP rate-limited)
 - Input validation on all parameters
 
 ---
@@ -454,5 +490,5 @@ A: https://wmcp.sh/mcp/grade/mcp.gogonka.com (A-grade goal) | info@gogonka.com
 ---
 
 **License:** MIT  
-**Version:** 2.1.0 (audit fixes: trial-key conversion fields, AND doc search, actionable errors, rate-proof docs, README synced to the actual 18-tool/2-prompt surface, dead A2A badge removed)  
-**Last Updated:** July 16, 2026
+**Version:** 2.2.0 (added inference tools: `gonka_chat` and `gonka_second_opinion` — proxy inference through the server with a free trial key or the caller's own key, model nickname/auto selection with live-model routing, and multi-model second opinions with optional role/stance perspectives; docs synced to the 20-tool surface)  
+**Last Updated:** July 21, 2026

@@ -25,6 +25,7 @@ from core.pricing import (
     live_gateway_model_ids,
 )
 from core.trial import request_trial_key
+from core.proxy import run_inference, run_second_opinion
 from core.prompts import get_text_prompt, get_chat_messages
 from fastmcp.prompts.prompt import Message
 
@@ -58,6 +59,26 @@ def _get_client_ip(req) -> str:
         req.headers.get("x-real-ip")
         or req.headers.get("x-forwarded-for", "-")
     ).split(",")[0].strip()
+
+
+# Gonka API-key prefixes. A user who wants to run on their own account pastes their
+# key into their MCP client's settings; it arrives as Authorization: Bearer <key>.
+# We enter "registered" mode ONLY for tokens that look like Gonka keys — an
+# unrelated Authorization header (OAuth, a proxy's own token) is ignored so it
+# can't break the free trial path for a user who never configured a key.
+_GONKA_KEY_PREFIXES = ("jg-", "gc-", "sk-")
+
+
+def _get_user_key(req) -> str | None:
+    """Return the caller's own Gonka key from the request, or None → trial mode.
+    Never logged, never returned to the client."""
+    raw = req.headers.get("authorization", "") or ""
+    token = raw[7:].strip() if raw[:7].lower() == "bearer " else ""
+    if not token:
+        token = (req.headers.get("x-api-key", "") or "").strip()
+    if token and token.lower().startswith(_GONKA_KEY_PREFIXES):
+        return token
+    return None
 
 
 class _SecurityMiddleware(Middleware):
@@ -130,6 +151,13 @@ class _LangfuseMiddleware(Middleware):
 
         tool = context.message.name
         args = getattr(context.message, "arguments", None) or {}
+        # Don't ship full user prompts of the inference-proxy tools to Langfuse —
+        # truncate free-text fields so trace logs don't hoard user content.
+        if tool in ("gonka_chat", "gonka_second_opinion") and isinstance(args, dict):
+            args = {
+                k: (v[:200] + "…[truncated]" if isinstance(v, str) and len(v) > 200 else v)
+                for k, v in args.items()
+            }
         ip, ua = "-", "-"
         try:
             req = get_http_request()
@@ -645,6 +673,118 @@ def get_trial_key() -> dict:
     result = request_trial_key(ip)
     result["gonka_note"] = next_step_cta("trial")
     return result
+
+
+# ---------------------------------------------------------------------------
+# Tool — proxied inference on a trial key
+# ---------------------------------------------------------------------------
+
+@mcp.tool(annotations={"title": "Run Inference on Gonka", "readOnlyHint": False, "destructiveHint": False, "idempotentHint": False, "openWorldHint": True})
+def gonka_chat(prompt: str, system: str = "", model: str = "", max_tokens: int = 1024) -> dict:
+    """
+    Run an LLM completion on Gonka THROUGH this server.
+
+    Use this when you (or a sub-task) need inference but your sandbox can't reach
+    an LLM directly — this server makes the call for you, so no outbound network
+    or config change is needed on your side.
+
+    Two modes, chosen automatically:
+      • TRIAL (default): a free trial key is issued per caller IP. Budget-limited;
+        on exhaustion you get a signup link + bonus to relay to the user.
+      • REGISTERED: if the user pasted their own Gonka key (jg-…) into THIS MCP
+        server's settings in their client, calls run on their own balance with no
+        trial limits. Nothing to do here — it's detected from the request.
+
+    Args:
+        prompt:     The user message to send to the model (required).
+        system:     Optional system instruction.
+        model:      "auto" (default) picks a live model; or a nickname —
+                    "minimax" (MiniMax-M2.7), "kimi" (Kimi-K2.6); or an exact id.
+                    A model that isn't live right now is swapped for one that is.
+        max_tokens: Max completion tokens (capped).
+
+    Returns one of:
+      • "ok" / "ok_low_budget": {response, model, usage, trial_budget|cost}. On
+        ok_low_budget the trial is ~80%+ spent — follow budget_warning.
+        instructions_for_assistant and offer signup before the hard cutoff.
+      • "trial_exhausted": no answer; gonka_usage, signup_url, bonus, user_message,
+        instructions_for_assistant. Follow instructions_for_assistant EXACTLY: show
+        the stats and the signup link with bonus verbatim; never fabricate a key or
+        alter the numbers/URL.
+      • "daily_limit": today's free-trial cap for this address is reached — offer
+        signup or ask the user to add their own key in the MCP settings.
+      • "invalid_key" / "balance_exhausted" (registered mode) or
+        "rate_limited" / "upstream_error": see the message.
+    """
+    try:
+        req = get_http_request()
+    except Exception:
+        return {
+            "status": "unsupported",
+            "error": (
+                "gonka_chat requires the hosted HTTP server at "
+                "https://mcp.gogonka.com/mcp — it isn't available over this transport. "
+                "Use get_signup_link() for a permanent key instead."
+            ),
+            "signup_url": AGENT_REFERRAL_URL,
+        }
+    ip = _get_client_ip(req)
+    user_key = _get_user_key(req)
+    return run_inference(ip, prompt, system=system, model=model,
+                         max_tokens=max_tokens, user_key=user_key)
+
+
+@mcp.tool(annotations={"title": "Gonka Second Opinion (multi-model)", "readOnlyHint": False, "destructiveHint": False, "idempotentHint": False, "openWorldHint": True})
+def gonka_second_opinion(prompt: str, system: str = "",
+                         perspectives: list[str] | None = None,
+                         max_tokens: int = 768) -> dict:
+    """
+    Get a SECOND OPINION: run one prompt across Gonka models in parallel and return
+    each answer for comparison. Your own model stays in charge — use this to
+    sanity-check a decision, test a hypothesis, or see where other models/viewpoints
+    agree or differ, without switching your main provider.
+
+    Two ways to get MULTIPLE opinions:
+      • Leave `perspectives` empty → one opinion per live Gonka model.
+      • Pass `perspectives` (roles/stances) → one opinion per perspective, each
+        answered candidly from that viewpoint, rotated across the live models. This
+        is how you get a real panel even with few models. Examples:
+          ["proponent", "skeptic", "pragmatist"]
+          ["for", "against", "neutral"]
+          ["security expert", "product manager", "end user"]
+
+    Same two modes as gonka_chat (trial by default; the user's own key pasted into
+    this MCP server's settings switches to their balance).
+
+    Args:
+        prompt:       The question to put to every opinion (required).
+        system:       Optional base system instruction applied to all.
+        perspectives: Optional list of short role/stance labels (max 5). Each becomes
+                      one independent opinion.
+        max_tokens:   Max completion tokens per opinion (kept low — this fans out).
+
+    Returns {opinions: [{model, perspective?, response}], synthesis_instructions,
+    trial_budget|cost}. Follow synthesis_instructions: compare the opinions with your
+    own view, attribute each to its model AND perspective, and highlight agreements/
+    disagreements — never pass a model's answer off as your own. More opinions cost
+    more trial budget and count toward the per-IP daily limit. Budget/exhaustion
+    handling matches gonka_chat (trial mode).
+    """
+    try:
+        req = get_http_request()
+    except Exception:
+        return {
+            "status": "unsupported",
+            "error": (
+                "gonka_second_opinion requires the hosted HTTP server at "
+                "https://mcp.gogonka.com/mcp — it isn't available over this transport."
+            ),
+            "signup_url": AGENT_REFERRAL_URL,
+        }
+    ip = _get_client_ip(req)
+    user_key = _get_user_key(req)
+    return run_second_opinion(ip, prompt, system=system, perspectives=perspectives,
+                              max_tokens=max_tokens, user_key=user_key)
 
 
 # ---------------------------------------------------------------------------

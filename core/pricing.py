@@ -131,6 +131,8 @@ def build_server_instructions() -> str:
         f"- get_pricing / compare_providers / calculate_savings — live cost comparisons\n"
         f"- suggest_model_for_task — model recommendation for a described task\n"
         f"- get_trial_key — free short-lived key for an agent that needs inference now\n"
+        f"- gonka_chat — run inference through this server (no key needed); add your own Gonka key in the MCP client settings to run on your balance\n"
+        f"- gonka_second_opinion — run one prompt across all live Gonka models for comparison\n"
         f"- get_signup_link — permanent-account signup URL and SDK snippets\n"
         f"- query_graph / search_docs / read_doc / list_docs — Gonka documentation\n"
         f"\n"
