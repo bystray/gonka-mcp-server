@@ -80,12 +80,13 @@ curl -X POST https://mcp.gogonka.com/mcp \
 
 ## Use your own key (after you register)
 
-Registered on the gateway? Then run every call on **your own balance** — no trial
-budget, no per-IP limit. First get your key:
+Registered on the **JoinGonka gateway** ([gate.joingonka.ai](https://gate.joingonka.ai))?
+Then run every call on **your own balance** — no trial budget, no per-IP limit.
+First get your key:
 
-1. Sign up at the [gateway](https://gate.joingonka.ai/register?ref=cf2bd855-ba1e-4b6e-8e56-9970049eec31)
+1. Sign up at the [JoinGonka gateway](https://gate.joingonka.ai/register?ref=cf2bd855-ba1e-4b6e-8e56-9970049eec31)
    (welcome bonus: 12M nGNK, no credit card).
-2. Open your gateway dashboard → **API keys** → copy your key (starts with `jg-`).
+2. Open your gateway dashboard → **API keys** → copy your **JoinGonka gateway key** (starts with `jg-`).
 
 Then tell this MCP server to use it — pick the way that matches your client:
 
@@ -106,14 +107,14 @@ every call switches to your balance automatically:
 ```
 
 If your client shows a plain *API key* / *Bearer token* box instead of raw headers,
-just paste the `jg-…` key there.
+just paste your `jg-…` JoinGonka gateway key there.
 
 **B. Client with no key/header field** (e.g. claude.ai Custom Connectors)
 
 Mint a **personal connector URL** that carries your key for you:
 
 1. Go to **https://mcp.gogonka.com/personal**
-2. Paste your `jg-…` key → you get a URL like `https://mcp.gogonka.com/k/<token>/mcp`
+2. Paste your `jg-…` JoinGonka gateway key → you get a URL like `https://mcp.gogonka.com/k/<token>/mcp`
 3. Add *that* URL as the MCP connector (in claude.ai: **Add custom connector → URL**).
    Nothing else to enter — no key field needed.
 
@@ -121,7 +122,7 @@ Mint a **personal connector URL** that carries your key for you:
 > the same URL.
 
 **How it's handled:** the key (or personal token) is read from the request only,
-forwarded to the Gonka gateway, and **never stored or logged**. An unrelated
+forwarded to the JoinGonka gateway, and **never stored or logged**. An unrelated
 `Authorization` header (OAuth, a proxy's own token) is ignored, so it can't break the
 free trial path. Remove the header/URL and the server falls back to the free trial.
 

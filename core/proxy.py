@@ -528,7 +528,7 @@ def _registered_result(res: dict, model_note: str | None) -> dict:
         return {"status": "rate_limited", "mode": "registered",
                 "error": "Rate limit hit. Wait a few seconds and retry."}
     return {"status": "upstream_error", "mode": "registered",
-            "error": "Gonka gateway did not return a completion.", "http_status": http}
+            "error": "JoinGonka gateway did not return a completion.", "http_status": http}
 
 
 # --------------------------------------------------------------------------- #
@@ -598,7 +598,7 @@ def run_inference(ip: str, prompt: str, system: str = "", model: str = "",
                         "retry_after_seconds": 8,
                         "trial_budget": _budget_view(_ledger_entry(key_id, limit_ngnk))}
             return {"status": "upstream_error", "mode": "trial",
-                    "error": "Gonka gateway did not return a completion.",
+                    "error": "JoinGonka gateway did not return a completion.",
                     "http_status": http,
                     "trial_budget": _budget_view(_ledger_entry(key_id, limit_ngnk))}
 
