@@ -1,8 +1,8 @@
 {
   "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
   "name": "io.github.bystray/gonka-mcp-server",
-  "title": "Gonka Network Pricing",
-  "description": "Run LLM inference through the server (free trial key or your own key), get multi-model second opinions, and find the cheapest OpenAI-compatible API. Gonka Network is orders of magnitude cheaper than GPT-4o; live pricing and the exact ratio are updated every 10 minutes (call get_pricing). Includes cost calculators, provider comparisons, free trial keys, and full Gonka documentation search via knowledge graph.",
+  "title": "Gonka Second Opinion (multi-model)",
+  "description": "Get a second opinion from independent LLMs in one call: run your prompt across the models live on the decentralized Gonka network AND across assigned roles (skeptic/proponent/pragmatist), then let your own model synthesize — a 3-model panel costs a fraction of a cent. Also runs single cheap completions through the server (free no-signup trial key or your own key), live price comparisons vs OpenAI/Anthropic, and Gonka documentation search. Prices float with the market and are quoted live (get_pricing); the live model set rotates (get_available_models). Welcome bonus on signup: 12M nGNK in free tokens.",
   "homepage": "https://gogonka.com",
   "repository": {
     "url": "https://github.com/bystray/gonka-mcp-server",
@@ -10,11 +10,12 @@
   },
   "version": "2.2.0",
   "keywords": [
-    "pricing",
+    "second-opinion",
+    "multi-model",
     "llm",
     "inference",
     "inference-proxy",
-    "second-opinion",
+    "pricing",
     "cost-optimization",
     "openai-alternative",
     "anthropic-alternative",

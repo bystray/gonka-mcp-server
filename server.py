@@ -26,6 +26,7 @@ from core.pricing import (
 )
 from core.trial import request_trial_key
 from core.proxy import run_inference, run_second_opinion
+from core.personal import mint as personal_mint, resolve as personal_resolve
 from core.prompts import get_text_prompt, get_chat_messages
 from fastmcp.prompts.prompt import Message
 
@@ -72,6 +73,15 @@ _GONKA_KEY_PREFIXES = ("jg-", "gc-", "sk-")
 def _get_user_key(req) -> str | None:
     """Return the caller's own Gonka key from the request, or None → trial mode.
     Never logged, never returned to the client."""
+    # Personal connector URL: https://mcp.gogonka.com/k/<token>/mcp — nginx rewrites
+    # it to /mcp and passes the token here. For clients (e.g. claude.ai Connectors)
+    # that have no field to paste an API key/header, this is how the user brings
+    # their own key: the token resolves to their key server-side.
+    ptoken = (req.headers.get("x-personal-token", "") or "").strip()
+    if ptoken:
+        key = personal_resolve(ptoken)
+        if key:
+            return key
     raw = req.headers.get("authorization", "") or ""
     token = raw[7:].strip() if raw[:7].lower() == "bearer " else ""
     if not token:
@@ -1047,6 +1057,82 @@ Immediate inference need: get_trial_key() → use the key → get_signup_link() 
         deposit_tokens=f"{deposit_tokens:,}", openai_equiv=f"{openai_equiv:,.0f}",
         wb_ngnk=f"{wb_ngnk:,}", wb_tokens=f"{wb_tokens:,}", agent_referral_url=AGENT_REFERRAL_URL,
     )
+
+
+# ---------------------------------------------------------------------------
+# Personal connector URL — mint a URL that carries the user's own key, for
+# clients (e.g. claude.ai Connectors) that have no field to paste an API key.
+# ---------------------------------------------------------------------------
+from starlette.responses import HTMLResponse
+
+_PERSONAL_CSS = (
+    "body{background:#0a0f1e;color:#e2e8f0;font-family:-apple-system,Segoe UI,sans-serif;"
+    "line-height:1.6;max-width:640px;margin:0 auto;padding:2.5rem 1.25rem}"
+    "h1{font-size:1.5rem;margin-bottom:.4rem}h1 span{color:#00d4ff}"
+    "p{color:#94a3b8;font-size:.92rem}a{color:#00d4ff}"
+    "label{display:block;font-size:.8rem;color:#94a3b8;margin:1.2rem 0 .35rem}"
+    "input{width:100%;padding:.7rem .9rem;background:#020617;border:1px solid #1e293b;"
+    "border-radius:8px;color:#e2e8f0;font-family:monospace;font-size:.9rem}"
+    "button{margin-top:1rem;background:linear-gradient(90deg,#00d4ff,#7c3aed);color:#04121f;"
+    "font-weight:700;border:none;padding:.7rem 1.4rem;border-radius:8px;font-size:.95rem;cursor:pointer}"
+    ".box{background:#111827;border:1px solid #1e293b;border-radius:10px;padding:1.1rem;margin-top:1.25rem}"
+    "code{font-family:monospace;background:rgba(0,212,255,.08);border:1px solid rgba(0,212,255,.18);"
+    "border-radius:6px;padding:.2em .45em;color:#00d4ff;word-break:break-all}"
+    ".url{display:block;background:#020617;border:1px solid rgba(0,212,255,.25);border-radius:8px;"
+    "padding:.8rem;font-family:monospace;font-size:.85rem;color:#7fe7ff;word-break:break-all;margin:.6rem 0}"
+    ".warn{color:#fbbf24;font-size:.82rem;margin-top:.8rem}.err{color:#f87171}"
+)
+
+
+def _personal_form(msg: str = "") -> str:
+    return (
+        f"<!doctype html><html lang='en'><head><meta charset='utf-8'>"
+        f"<meta name='viewport' content='width=device-width,initial-scale=1'>"
+        f"<meta name='robots' content='noindex'>"
+        f"<title>Gonka — personal connector URL</title><style>{_PERSONAL_CSS}</style></head><body>"
+        f"<h1>Personal <span>connector URL</span></h1>"
+        f"<p>Для клиентов без поля «API-ключ» (например, claude.ai Connectors). "
+        f"Вставь свой ключ Gonka — получишь личный URL, который работает на твоём балансе.<br>"
+        f"<span style='font-size:.85rem'>For clients with no API-key field (e.g. claude.ai Connectors): "
+        f"paste your Gonka key to get a personal URL that runs on your own balance.</span></p>"
+        f"{msg}"
+        f"<form method='post'>"
+        f"<label>Твой ключ Gonka · Your Gonka key (jg-…)</label>"
+        f"<input name='key' placeholder='jg-…' autocomplete='off' spellcheck='false'>"
+        f"<button type='submit'>Получить URL · Get URL</button>"
+        f"</form>"
+        f"<p class='warn'>Ключ хранится на сервере, чтобы подставлять его в твои запросы, "
+        f"и нигде не логируется. Никому не передавай свой личный URL — он равнозначен ключу.</p>"
+        f"</body></html>"
+    )
+
+
+@mcp.custom_route("/personal", methods=["GET", "POST"])
+async def personal_url(request):
+    if request.method == "GET":
+        return HTMLResponse(_personal_form())
+    form = await request.form()
+    key = (form.get("key") or "").strip()
+    token = personal_mint(key)
+    if not token:
+        return HTMLResponse(_personal_form(
+            "<div class='box err'>Это не похоже на ключ Gonka (ожидается префикс "
+            "<code>jg-</code>). Проверь ключ. · That doesn't look like a Gonka key "
+            "(expected a <code>jg-</code> prefix).</div>"
+        ))
+    url = f"https://mcp.gogonka.com/k/{token}/mcp"
+    body = (
+        f"<div class='box'>"
+        f"<p><b>Готово · Done.</b> Вставь этот URL как адрес MCP-коннектора "
+        f"(в claude.ai — «Add custom connector» → URL):</p>"
+        f"<span class='url'>{url}</span>"
+        f"<p style='font-size:.82rem'>Больше ничего вводить не нужно — ключа поля там нет, "
+        f"и не требуется. · Nothing else to enter — no key field needed.</p>"
+        f"<p class='warn'>Храни этот URL в секрете (он = твой ключ). Тот же ключ всегда даёт "
+        f"тот же URL. · Keep this URL secret (it equals your key).</p>"
+        f"</div>"
+    )
+    return HTMLResponse(_personal_form(body))
 
 
 from core.docs import register_docs_tools
