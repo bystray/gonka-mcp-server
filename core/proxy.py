@@ -708,10 +708,37 @@ def _opinion_entry(task: dict, res: dict, used_model: str) -> dict:
     return entry
 
 
+def _maybe_share(result: dict, share: bool, prompt: str) -> dict:
+    """Opt-in: when share=True and we have answers, persist a public unlisted page
+    and attach share_url. Never raises — sharing is best-effort and must never
+    break the tool response."""
+    if not share:
+        return result
+    if not str(result.get("status", "")).startswith("ok"):
+        return result
+    opinions = result.get("opinions") or []
+    if not any(o.get("response") for o in opinions):
+        return result
+    try:
+        from core import share as _share
+        sres = _share.save_opinion(prompt, opinions, result.get("cost"))
+        if sres.get("shared"):
+            result["share_url"] = sres["share_url"]
+            result["share_note"] = ("Public link created — anyone with it can read the "
+                                     "question and answers. Give it to the user only if they "
+                                     "asked to share.")
+        else:
+            result["share_note"] = sres.get("reason")
+    except Exception:
+        pass
+    return result
+
+
 def run_second_opinion(ip: str, prompt: str, system: str = "",
                        perspectives: list | None = None,
                        max_tokens: int = SECOND_OPINION_DEFAULT_TOKENS,
-                       user_key: str | None = None) -> dict:
+                       user_key: str | None = None,
+                       share: bool = False) -> dict:
     prompt = (prompt or "").strip()
     if not prompt:
         return {"status": "error", "error": "prompt is required and must be non-empty."}
@@ -745,7 +772,7 @@ def run_second_opinion(ip: str, prompt: str, system: str = "",
                "cost": {"usd": round(total_usd, 8), "ngnk": round(total_ngnk)}}
         if trunc_note:
             out["note"] = trunc_note
-        return out
+        return _maybe_share(out, share, prompt)
 
     # TRIAL — per-IP cap counts each sub-call (one per opinion).
     allowed, _ = _ratelimit_check_incr(ip, len(tasks))
@@ -786,4 +813,4 @@ def run_second_opinion(ip: str, prompt: str, system: str = "",
     elif budget["pct_used"] >= int(WARN_THRESHOLD * 100):
         result["status"] = "ok_low_budget"
         result["budget_warning"] = _low_budget_block(budget["pct_used"])
-    return result
+    return _maybe_share(result, share, prompt)

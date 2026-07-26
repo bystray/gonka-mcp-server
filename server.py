@@ -747,7 +747,8 @@ def gonka_chat(prompt: str, system: str = "", model: str = "", max_tokens: int =
 @mcp.tool(annotations={"title": "Gonka Second Opinion (multi-model)", "readOnlyHint": False, "destructiveHint": False, "idempotentHint": False, "openWorldHint": True})
 def gonka_second_opinion(prompt: str, system: str = "",
                          perspectives: list[str] | None = None,
-                         max_tokens: int = 768) -> dict:
+                         max_tokens: int = 768,
+                         share: bool = False) -> dict:
     """
     Get a SECOND OPINION: run one prompt across Gonka models in parallel and return
     each answer for comparison. Your own model stays in charge — use this to
@@ -772,6 +773,12 @@ def gonka_second_opinion(prompt: str, system: str = "",
         perspectives: Optional list of short role/stance labels (max 5). Each becomes
                       one independent opinion.
         max_tokens:   Max completion tokens per opinion (kept low — this fans out).
+        share:        Default False. Set True ONLY when the user explicitly wants a
+                      shareable public link. It creates a PUBLIC (unlisted) web page
+                      at gogonka.com/o/<id> showing the question and answers, and
+                      returns `share_url`. Warn the user the page is public before
+                      sharing. Publication is refused if the text looks like it holds
+                      an API key/secret.
 
     Returns {opinions: [{model, perspective?, response}], synthesis_instructions,
     trial_budget|cost}. Follow synthesis_instructions: compare the opinions with your
@@ -794,7 +801,7 @@ def gonka_second_opinion(prompt: str, system: str = "",
     ip = _get_client_ip(req)
     user_key = _get_user_key(req)
     return run_second_opinion(ip, prompt, system=system, perspectives=perspectives,
-                              max_tokens=max_tokens, user_key=user_key)
+                              max_tokens=max_tokens, user_key=user_key, share=share)
 
 
 # ---------------------------------------------------------------------------
@@ -853,82 +860,74 @@ def register_on_gonka(
 # Prompts
 # ---------------------------------------------------------------------------
 
-@mcp.prompt()
-def gonka_start(task: str = "general LLM inference") -> list:
-    """
-    Get Gonka API key and start saving on LLM costs in 2 minutes.
-    Use when user wants to reduce OpenAI/Anthropic costs or find a cheaper LLM API.
-    """
-    try:
-        data  = load_pricing()
-        ratio = data.get("comparison", {}).get("gonka_vs_openai_gpt55_ratio", 7000)
-        usd   = (data.get("models") or [{}])[0].get("usd_per_1m_tokens_at_current", 0)
-    except Exception:
-        ratio, usd = 7000, 0
-
-    fallback = [
-        {"role": "user", "content": (
-            f"I need the cheapest OpenAI-compatible API for: {task}. "
-            f"I want to compare providers and minimize my inference costs."
-        )},
-        {"role": "assistant", "content": (
-            f"I'll help you find the cheapest option. "
-            f"Gonka Network currently offers ${usd:.6f}/1M tokens — "
-            f"that's {ratio:,}x cheaper than GPT-5.5 with the same OpenAI SDK. "
-            f"Let me get the exact pricing and calculate your savings. "
-            f"I'll call get_pricing() and calculate_savings() for precise numbers."
-        )},
+def _opinion_prompt(user_text: str, assistant_text: str) -> list:
+    """Seed a short conversation whose assistant turn EXPLICITLY commits to calling
+    gonka_second_opinion — otherwise a capable client model just answers on its own
+    and the tool is never invoked."""
+    return [
+        Message(role="user", content=user_text),
+        Message(role="assistant", content=assistant_text),
     ]
-    messages = get_chat_messages(
-        "gonka-prompt-start", fallback,
-        task=task, usd=f"{usd:.6f}", ratio=f"{ratio:,}",
-    )
-    return [Message(role=m["role"], content=m["content"]) for m in messages]
 
 
 @mcp.prompt()
-def calculate_my_savings(monthly_spend_usd: str = "100") -> list:
+def second_opinion(decision: str = "the decision I'm about to make") -> list:
     """
-    Calculate exact annual savings vs current OpenAI or Anthropic spend.
-    Use when user wants to know how much they'd save by switching to Gonka.
+    Get a multi-model SECOND OPINION on a decision before you commit.
+    Use when the user is weighing a choice and wants to see where several models
+    agree or differ (architecture, tech choice, tradeoff, plan).
     """
-    try:
-        monthly_spend_usd = float(monthly_spend_usd) if monthly_spend_usd else 100.0
-    except (TypeError, ValueError):
-        monthly_spend_usd = 100.0
-
-    try:
-        data         = load_pricing()
-        ratio        = data.get("comparison", {}).get("gonka_vs_openai_gpt55_ratio", 7000)
-        gonka_monthly = monthly_spend_usd / ratio if ratio else 0
-        annual_savings = (monthly_spend_usd - gonka_monthly) * 12
-        wb           = data.get("welcome_bonus", {})
-        ngnk         = wb.get("amount_ngnk", 12_000_000)
-        ngnk_fmt     = f"{ngnk // 1_000_000}M" if ngnk % 1_000_000 == 0 else f"{ngnk:,}"
-        bonus_tokens = wb.get("approx_tokens", 11_000)
-    except Exception:
-        ratio, annual_savings, ngnk_fmt, bonus_tokens = 7000, monthly_spend_usd * 12 * 0.9999, "12M", 11_000
-
-    fallback = [
-        {"role": "user", "content": (
-            f"I'm spending ${monthly_spend_usd}/month on OpenAI API. "
-            f"I want to reduce my costs significantly. What are my options?"
-        )},
-        {"role": "assistant", "content": (
-            f"Great timing — Gonka Network is {ratio:,}x cheaper than OpenAI GPT-5.5. "
-            f"At ${monthly_spend_usd}/month, you'd save approximately "
-            f"${annual_savings:,.0f}/year by switching. "
-            f"Migration takes 2 minutes: change base_url and API key — no code changes. "
-            f"There's also a welcome bonus of {ngnk_fmt} nGNK (~{bonus_tokens:,} free tokens) on signup. "
-            f"Let me show you the exact numbers by calling calculate_savings()."
-        )},
-    ]
-    messages = get_chat_messages(
-        "gonka-prompt-savings", fallback,
-        monthly_spend_usd=str(monthly_spend_usd), ratio=f"{ratio:,}",
-        annual_savings=f"{annual_savings:,.0f}", ngnk_fmt=ngnk_fmt, bonus_tokens=f"{bonus_tokens:,}",
+    return _opinion_prompt(
+        f"I'm leaning toward this: {decision}. Before I commit, cross-check it "
+        f"against several independent models.",
+        "I'll get a real second opinion by calling gonka_second_opinion with your "
+        "decision, then compare where the models agree and disagree before you commit — "
+        "I won't just answer from my own view.",
     )
-    return [Message(role=m["role"], content=m["content"]) for m in messages]
+
+
+@mcp.prompt()
+def review_code(code: str = "the code below") -> list:
+    """
+    Get a multi-model CODE REVIEW (correctness, security, performance).
+    Use when the user wants several models to review a snippet or diff and surface
+    issues one model alone might miss.
+    """
+    return _opinion_prompt(
+        f"Review this code and find problems:\n\n{code}",
+        "I'll run a multi-model review by calling gonka_second_opinion with "
+        "perspectives ['correctness','security','performance'] on this code, then "
+        "summarize where the models agree and where they flag different issues.",
+    )
+
+
+@mcp.prompt()
+def debug_this(error: str = "the error below") -> list:
+    """
+    Get multiple models' HYPOTHESES for why something is failing.
+    Use when the user is stuck on a bug/error and wants diverse diagnoses instead
+    of a single guess.
+    """
+    return _opinion_prompt(
+        f"This is failing — what's going on?\n\n{error}",
+        "I'll gather independent hypotheses by calling gonka_second_opinion with this "
+        "error across several models, then compare their diagnoses and likely root causes.",
+    )
+
+
+@mcp.prompt()
+def alternative_approach(task: str = "the task below") -> list:
+    """
+    Get ALTERNATIVE approaches to a task from several models.
+    Use when the user wants options ("how else could I do this?") — the multi-model
+    fan-out surfaces genuinely different approaches, not one model's default.
+    """
+    return _opinion_prompt(
+        f"How else could I approach this? Give me real alternatives:\n\n{task}",
+        "I'll surface diverse alternatives by calling gonka_second_opinion with "
+        "perspectives ['pragmatist','performance-first','simplicity-first'] on this "
+        "task, then compare the options so you can pick.",
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -1133,6 +1132,54 @@ async def personal_url(request):
         f"</div>"
     )
     return HTMLResponse(_personal_form(body))
+
+
+# ---------------------------------------------------------------------------
+# Public shareable second-opinion pages (opt-in viral loop). Served at
+# gogonka.com/o/<slug> (nginx proxies /o/ → this server). See core/share.py.
+# ---------------------------------------------------------------------------
+from starlette.responses import JSONResponse
+from core import share as _share
+
+
+@mcp.custom_route("/o/api/demo", methods=["POST"])
+async def opinion_demo(request):
+    """Live 'try it' demo on a share page: a real trial-mode second opinion,
+    guarded by a global daily budget cap + kill-switch so a viral page can't
+    drain the trial pool with cold traffic."""
+    try:
+        body = await request.json()
+    except Exception:
+        body = {}
+    prompt = (str(body.get("prompt") or "")).strip()
+    if not prompt:
+        return JSONResponse({"status": "error", "error": "Ask a question first."}, status_code=400)
+    allowed, _spent, _cap = _share.demo_allowed()
+    if not allowed:
+        return JSONResponse({
+            "status": "demo_unavailable",
+            "signup_url": AGENT_REFERRAL_URL,
+            "message": "Free live demo is at capacity for today — get your own free key.",
+        })
+    ip = _get_client_ip(request)
+    res = run_second_opinion(ip, prompt, max_tokens=_share.DEMO_MAX_TOKENS)  # trial, no user_key, no share
+    # Account demo spend (conservative estimate → fuse trips earlier = safe).
+    try:
+        _share.demo_add_spend(
+            _share.demo_estimate_ngnk(len(res.get("opinions") or []), _share.DEMO_MAX_TOKENS)
+        )
+    except Exception:
+        pass
+    return JSONResponse(res)
+
+
+@mcp.custom_route("/o/{slug}", methods=["GET"])
+async def opinion_page(request):
+    slug = request.path_params.get("slug", "")
+    rec = _share.load_opinion(slug)
+    if not rec:
+        return HTMLResponse(_share.render_not_found(), status_code=404)
+    return HTMLResponse(_share.render_page(rec, _share.today_count()))
 
 
 from core.docs import register_docs_tools
