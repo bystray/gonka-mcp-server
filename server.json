@@ -8,7 +8,7 @@
     "url": "https://github.com/bystray/gonka-mcp-server",
     "source": "github"
   },
-  "version": "2.2.0",
+  "version": "2.3.0",
   "keywords": [
     "second-opinion",
     "multi-model",
@@ -112,12 +112,20 @@
   ],
   "prompts": [
     {
-      "name": "gonka_start",
-      "description": "Get Gonka API key and start saving on LLM costs in 2 minutes. Use when the user wants to reduce OpenAI/Anthropic costs or find a cheaper LLM API."
+      "name": "second_opinion",
+      "description": "Get a multi-model second opinion on a decision before you commit — several live Gonka models cross-check it and you see where they agree or differ."
     },
     {
-      "name": "calculate_my_savings",
-      "description": "Calculate exact annual savings vs current OpenAI or Anthropic spend."
+      "name": "review_code",
+      "description": "Get a multi-model code review (correctness, security, performance) — several models review a snippet or diff and surface issues one model alone might miss."
+    },
+    {
+      "name": "debug_this",
+      "description": "Get multiple models' hypotheses for why something is failing — diverse diagnoses of an error instead of a single guess."
+    },
+    {
+      "name": "alternative_approach",
+      "description": "Get alternative approaches to a task from several models — the multi-model fan-out surfaces genuinely different options, not one model's default."
     }
   ],
   "resources": [
