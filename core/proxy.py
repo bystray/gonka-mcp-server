@@ -63,8 +63,8 @@ DEFAULT_LIMIT_NGONKA = 150000
 WARN_THRESHOLD   = 0.80          # soft-warn the main model at 80% spent
 MAX_PROMPT_CHARS = 24000         # guard against runaway prompts on a trial key
 MAX_TOKENS_CAP   = 2048          # cap completion size (gonka_chat)
-SECOND_OPINION_MAX_TOKENS = 1024   # hard cap per opinion; MiniMax is a reasoning model
-SECOND_OPINION_DEFAULT_TOKENS = 768  # default — enough to finish thinking + a concise answer
+SECOND_OPINION_MAX_TOKENS = 3072   # hard cap per opinion (room for reasoning + a full answer)
+SECOND_OPINION_DEFAULT_TOKENS = 1536  # default — full answer, not clipped
 MAX_OPINIONS = 5                 # hard cap on sub-calls per second-opinion (budget/latency)
 MAX_PERSPECTIVE_LEN = 60         # each perspective label is a short role/stance
 NGONKA_PER_TOKEN = 19.8          # measured on gate.joingonka.ai at current price
@@ -645,7 +645,8 @@ def _opinion_system(base_system: str, perspective: str | None) -> str:
             f"Adopt this role/stance for your answer: {perspective}. Give your candid "
             f"take from that viewpoint and commit to a conclusion; don't argue the other side."
         )
-    parts.append(_CONCISE_HINT)
+    # No forced brevity — a clipped answer reads as if the model is shallow. Give a
+    # full, well-reasoned answer (token cap below still bounds runaway output).
     return "\n\n".join(parts)
 
 
@@ -695,11 +696,13 @@ def _parallel_tasks(api_key: str, tasks: list[dict], max_tokens: int) -> list[tu
 
 
 def _opinion_entry(task: dict, res: dict, used_model: str) -> dict:
-    entry: dict = {"model": _short_model(used_model)}
+    entry: dict = {"model": _short_model(used_model), "model_id": used_model}
     if task.get("perspective"):
         entry["perspective"] = task["perspective"]
     if res["ok"]:
         entry["response"] = res["content"]
+        if res.get("finish") == "length":
+            entry["truncated"] = True     # hit token cap — cut off, NOT a model error
         if not res["content"]:
             entry["note"] = ("Model spent its whole token budget reasoning and returned no "
                              "final answer — retry or raise max_tokens.")
@@ -708,7 +711,8 @@ def _opinion_entry(task: dict, res: dict, used_model: str) -> dict:
     return entry
 
 
-def _maybe_share(result: dict, share: bool, prompt: str) -> dict:
+def _maybe_share(result: dict, share: bool, prompt: str,
+                 synthesis: str = "", shared_via: str = "") -> dict:
     """Opt-in: when share=True and we have answers, persist a public unlisted page
     and attach share_url. Never raises — sharing is best-effort and must never
     break the tool response."""
@@ -721,7 +725,8 @@ def _maybe_share(result: dict, share: bool, prompt: str) -> dict:
         return result
     try:
         from core import share as _share
-        sres = _share.save_opinion(prompt, opinions, result.get("cost"))
+        sres = _share.save_opinion(prompt, opinions, result.get("cost"),
+                                   synthesis=synthesis, shared_via=shared_via)
         if sres.get("shared"):
             result["share_url"] = sres["share_url"]
             result["share_note"] = ("Public link created — anyone with it can read the "
@@ -738,7 +743,8 @@ def run_second_opinion(ip: str, prompt: str, system: str = "",
                        perspectives: list | None = None,
                        max_tokens: int = SECOND_OPINION_DEFAULT_TOKENS,
                        user_key: str | None = None,
-                       share: bool = False) -> dict:
+                       share: bool = False,
+                       synthesis: str = "", shared_via: str = "") -> dict:
     prompt = (prompt or "").strip()
     if not prompt:
         return {"status": "error", "error": "prompt is required and must be non-empty."}
@@ -772,7 +778,7 @@ def run_second_opinion(ip: str, prompt: str, system: str = "",
                "cost": {"usd": round(total_usd, 8), "ngnk": round(total_ngnk)}}
         if trunc_note:
             out["note"] = trunc_note
-        return _maybe_share(out, share, prompt)
+        return _maybe_share(out, share, prompt, synthesis, shared_via)
 
     # TRIAL — per-IP cap counts each sub-call (one per opinion).
     allowed, _ = _ratelimit_check_incr(ip, len(tasks))
@@ -813,4 +819,4 @@ def run_second_opinion(ip: str, prompt: str, system: str = "",
     elif budget["pct_used"] >= int(WARN_THRESHOLD * 100):
         result["status"] = "ok_low_budget"
         result["budget_warning"] = _low_budget_block(budget["pct_used"])
-    return _maybe_share(result, share, prompt)
+    return _maybe_share(result, share, prompt, synthesis, shared_via)

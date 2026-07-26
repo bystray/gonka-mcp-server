@@ -747,8 +747,9 @@ def gonka_chat(prompt: str, system: str = "", model: str = "", max_tokens: int =
 @mcp.tool(annotations={"title": "Gonka Second Opinion (multi-model)", "readOnlyHint": False, "destructiveHint": False, "idempotentHint": False, "openWorldHint": True})
 def gonka_second_opinion(prompt: str, system: str = "",
                          perspectives: list[str] | None = None,
-                         max_tokens: int = 768,
-                         share: bool = False) -> dict:
+                         max_tokens: int = 1536,
+                         share: bool = False,
+                         synthesis: str = "") -> dict:
     """
     Get a SECOND OPINION: run one prompt across Gonka models in parallel and return
     each answer for comparison. Your own model stays in charge — use this to
@@ -779,6 +780,10 @@ def gonka_second_opinion(prompt: str, system: str = "",
                       returns `share_url`. Warn the user the page is public before
                       sharing. Publication is refused if the text looks like it holds
                       an API key/secret.
+        synthesis:    Optional. When sharing (share=True), pass YOUR short comparison
+                      of the opinions (where they agree / differ, your takeaway) — it
+                      is shown on the page as the asking agent's take. Leave empty if
+                      you have none; the page still shows a text-similarity signal.
 
     Returns {opinions: [{model, perspective?, response}], synthesis_instructions,
     trial_budget|cost}. Follow synthesis_instructions: compare the opinions with your
@@ -800,8 +805,15 @@ def gonka_second_opinion(prompt: str, system: str = "",
         }
     ip = _get_client_ip(req)
     user_key = _get_user_key(req)
+    # Client label for honest attribution on the share page (the app, NOT the model —
+    # MCP doesn't transmit the caller's LLM). e.g. "claude-code/2.1.204 (…)" -> "claude-code".
+    shared_via = ""
+    if share:
+        ua = (req.headers.get("user-agent", "") or "").strip()
+        shared_via = ua.split("/")[0].split()[0][:60] if ua and ua != "-" else ""
     return run_second_opinion(ip, prompt, system=system, perspectives=perspectives,
-                              max_tokens=max_tokens, user_key=user_key, share=share)
+                              max_tokens=max_tokens, user_key=user_key, share=share,
+                              synthesis=synthesis, shared_via=shared_via)
 
 
 # ---------------------------------------------------------------------------
@@ -1138,39 +1150,7 @@ async def personal_url(request):
 # Public shareable second-opinion pages (opt-in viral loop). Served at
 # gogonka.com/o/<slug> (nginx proxies /o/ → this server). See core/share.py.
 # ---------------------------------------------------------------------------
-from starlette.responses import JSONResponse
 from core import share as _share
-
-
-@mcp.custom_route("/o/api/demo", methods=["POST"])
-async def opinion_demo(request):
-    """Live 'try it' demo on a share page: a real trial-mode second opinion,
-    guarded by a global daily budget cap + kill-switch so a viral page can't
-    drain the trial pool with cold traffic."""
-    try:
-        body = await request.json()
-    except Exception:
-        body = {}
-    prompt = (str(body.get("prompt") or "")).strip()
-    if not prompt:
-        return JSONResponse({"status": "error", "error": "Ask a question first."}, status_code=400)
-    allowed, _spent, _cap = _share.demo_allowed()
-    if not allowed:
-        return JSONResponse({
-            "status": "demo_unavailable",
-            "signup_url": AGENT_REFERRAL_URL,
-            "message": "Free live demo is at capacity for today — get your own free key.",
-        })
-    ip = _get_client_ip(request)
-    res = run_second_opinion(ip, prompt, max_tokens=_share.DEMO_MAX_TOKENS)  # trial, no user_key, no share
-    # Account demo spend (conservative estimate → fuse trips earlier = safe).
-    try:
-        _share.demo_add_spend(
-            _share.demo_estimate_ngnk(len(res.get("opinions") or []), _share.DEMO_MAX_TOKENS)
-        )
-    except Exception:
-        pass
-    return JSONResponse(res)
 
 
 @mcp.custom_route("/o/{slug}", methods=["GET"])
