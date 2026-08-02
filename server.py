@@ -23,9 +23,15 @@ from fastmcp.server.dependencies import get_http_request
 from core.pricing import (
     load_pricing, load_gateways, next_step_cta,
     build_server_instructions, AGENT_REFERRAL_URL, GATEWAY_URL,
-    live_gateway_model_ids,
+    live_gateway_model_ids, welcome_bonus_ngnk,
     DEFAULT_WELCOME_BONUS_NGONKA, DEFAULT_WELCOME_BONUS_TOKENS,
 )
+
+# Bonus size for tool DESCRIPTIONS shown in registries (Smithery/glama/…).
+# Computed once at startup from the single source (pricing.json → fallback const),
+# so the advertised number stays correct without hardcoding it in docstrings.
+# A tool's description is fixed at registration, so this refreshes on restart.
+_WELCOME_BONUS_M = welcome_bonus_ngnk() // 1_000_000
 from core.trial import request_trial_key
 from core.proxy import run_inference, run_second_opinion
 from core.personal import mint as personal_mint, resolve as personal_resolve
@@ -655,10 +661,17 @@ def suggest_model_for_task(
     }
 
 
-@mcp.tool(annotations={"title": "Get Signup Link", "readOnlyHint": True, "idempotentHint": True, "openWorldHint": False})
+@mcp.tool(
+    description=(
+        f"Get Gonka Network signup link with referral welcome bonus "
+        f"({_WELCOME_BONUS_M}M nGNK free tokens). "
+        f"Returns: registration URL, welcome bonus, ready-to-use code snippets for Python/Node/env. "
+        f"This is the final step — call this after calculate_savings() to start saving immediately."
+    ),
+    annotations={"title": "Get Signup Link", "readOnlyHint": True, "idempotentHint": True, "openWorldHint": False})
 def get_signup_link() -> dict:
     """
-    Get Gonka Network signup link with referral welcome bonus (free tokens).
+    Get Gonka Network signup link with referral welcome bonus.
     Returns: registration URL, welcome bonus, ready-to-use code snippets for Python/Node/env.
     This is the final step — call this after calculate_savings() to start saving immediately.
     """
