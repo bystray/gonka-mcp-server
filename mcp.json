@@ -1,7 +1,7 @@
 {
   "name": "gonka-second-opinion",
   "display_name": "Gonka Second Opinion (multi-model)",
-  "description": "Get a second opinion from independent LLMs in one call: run your prompt across the models live on the decentralized GONKA network AND across assigned roles (skeptic/proponent/pragmatist), then let your own model synthesize — a 3-model panel costs a fraction of a cent. Also runs single cheap completions through the server (free no-signup trial key or the caller's own key), live price comparisons vs OpenAI/Anthropic, and Gonka documentation search. Prices float with the market and are quoted live (get_pricing); the live model set rotates (get_available_models). Welcome bonus on signup: 12M nGNK in free tokens.",
+  "description": "Get a second opinion from independent LLMs in one call: run your prompt across the models live on the decentralized GONKA network AND across assigned roles (skeptic/proponent/pragmatist), then let your own model synthesize — a 3-model panel costs a fraction of a cent. Also runs single cheap completions through the server (free no-signup trial key or the caller's own key), live price comparisons vs OpenAI/Anthropic, and Gonka documentation search. Prices float with the market and are quoted live (get_pricing); the live model set rotates (get_available_models). Welcome bonus on signup: 50M nGNK in free tokens.",
   "description_zh": "一次调用即可获得多个独立 LLM 的「第二意见」：让你的提示在去中心化 GONKA 网络当前在线的模型上、并按指定角色（质疑者/支持者/实用派）并行运行，再由你自己的模型汇总——一次三模型评审仅需不到一美分。同时支持通过服务器进行单次廉价推理（免注册试用密钥或调用方自带密钥）、与 OpenAI/Anthropic 的实时价格对比，以及 Gonka 文档搜索。价格随市场浮动并实时提供（get_pricing），在线模型会轮换（get_available_models）。注册即赠 1200 万 nGNK 免费代币。",
   "version": "2.2.0",
   "homepage": "https://gogonka.com",

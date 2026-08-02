@@ -15,6 +15,28 @@ AGENT_REFERRAL_URL = (
 )
 GATEWAY_URL = "https://gate.joingonka.ai/v1"
 
+# --------------------------------------------------------------------------- #
+# Welcome bonus — SINGLE SOURCE OF TRUTH.
+# Live value comes from pricing.json → welcome_bonus.{amount_ngnk, approx_tokens}
+# (persisted server-side config, NOT overwritten by the pricing updater).
+# These constants are the code-side fallback used only when that file/key is
+# missing. To change the advertised bonus, update pricing.json; keep these in
+# sync so the fallback never lies. Every module imports these — never hardcode
+# the number anywhere else.
+# --------------------------------------------------------------------------- #
+DEFAULT_WELCOME_BONUS_NGONKA = 50_000_000
+DEFAULT_WELCOME_BONUS_TOKENS = 45_085_662  # = amount_ngnk / 1.109 nGNK-per-token
+
+
+def welcome_bonus_ngnk() -> int:
+    """The advertised welcome-bonus size in nGNK, live from pricing.json."""
+    try:
+        return int(load_pricing().get("welcome_bonus", {}).get(
+            "amount_ngnk", DEFAULT_WELCOME_BONUS_NGONKA))
+    except Exception:
+        return DEFAULT_WELCOME_BONUS_NGONKA
+
+
 _live_models_cache: dict = {"ids": None, "fetched_at": 0.0}
 _LIVE_MODELS_TTL = 300  # seconds — pricing.json itself only refreshes every 10 min
 
@@ -73,10 +95,10 @@ def next_step_cta(after_tool: str) -> str:
         data  = load_pricing()
         ratio = data.get("comparison", {}).get("gonka_vs_openai_gpt55_ratio", 7000)
         wb    = data.get("welcome_bonus", {})
-        ngnk  = wb.get("amount_ngnk", 12_000_000)
+        ngnk  = wb.get("amount_ngnk", DEFAULT_WELCOME_BONUS_NGONKA)
         ngnk_fmt = f"{ngnk // 1_000_000}M" if ngnk % 1_000_000 == 0 else f"{ngnk:,}"
     except Exception:
-        ratio, ngnk_fmt = 7000, "12M"
+        ratio, ngnk_fmt = 7000, f"{DEFAULT_WELCOME_BONUS_NGONKA // 1_000_000}M"
     link = f"[Sign up on GONKA gateway]({AGENT_REFERRAL_URL})"
     fallbacks = {
         "pricing":  f"Gonka is {ratio:,}x cheaper than GPT-5.5. {link} — {ngnk_fmt} nGNK free, no credit card.",
@@ -102,12 +124,12 @@ def build_server_instructions() -> str:
         ratio_deepseek = cmp.get("gonka_vs_deepseek_ratio", "hundreds")
         gnk_price      = gnk.get("usd_price_current", 0)
         usd_per_1m     = models[0].get("usd_per_1m_tokens_at_current", 0) if models else 0
-        bonus_ngnk     = wb.get("amount_ngnk", 12_000_000)
+        bonus_ngnk     = wb.get("amount_ngnk", DEFAULT_WELCOME_BONUS_NGONKA)
         bonus_ngnk_fmt = f"{bonus_ngnk // 1_000_000}M" if bonus_ngnk % 1_000_000 == 0 else f"{bonus_ngnk:,}"
-        bonus_tokens   = wb.get("approx_tokens", 11_000)
+        bonus_tokens   = wb.get("approx_tokens", DEFAULT_WELCOME_BONUS_TOKENS)
     except Exception:
         ratio_openai, ratio_deepseek, gnk_price, usd_per_1m = "thousands", "hundreds", 0, 0
-        bonus_ngnk_fmt, bonus_tokens = "12M", 11_000
+        bonus_ngnk_fmt, bonus_tokens = f"{DEFAULT_WELCOME_BONUS_NGONKA // 1_000_000}M", DEFAULT_WELCOME_BONUS_TOKENS
 
     # Ratios may be numbers (live data) or fallback strings ("thousands") —
     # format numbers here so the f-strings below never apply ',' to a str.

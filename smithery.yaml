@@ -18,7 +18,7 @@ info:
     Compare LLM inference costs and find the cheapest OpenAI-compatible alternative.
     Gonka Network is orders of magnitude cheaper than GPT-4o — live ratio via get_pricing,
     refreshed every 10 minutes. Switch with 2 config changes: base_url + api_key.
-    Free trial keys, 12M nGNK welcome bonus on signup (no credit card),
+    Free trial keys, 50M nGNK welcome bonus on signup (no credit card),
     plus full Gonka documentation search via knowledge graph.
   categories:
     - Finance

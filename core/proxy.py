@@ -39,7 +39,8 @@ import urllib.request as _req
 import urllib.error as _err
 from datetime import datetime, timezone
 
-from core.pricing import load_pricing, AGENT_REFERRAL_URL, live_gateway_model_ids
+from core.pricing import (load_pricing, AGENT_REFERRAL_URL, live_gateway_model_ids,
+                          DEFAULT_WELCOME_BONUS_NGONKA, DEFAULT_WELCOME_BONUS_TOKENS)
 from core.trial import (
     request_trial_key,
     _existing_key_by_ip,
@@ -234,10 +235,10 @@ def _pricing_bits() -> tuple[int, int, int]:
         data = load_pricing()
         ratio = int(data.get("comparison", {}).get("gonka_vs_openai_gpt55_ratio", 33284))
         wb = data.get("welcome_bonus", {})
-        bonus_ngnk = int(wb.get("amount_ngnk", 12_000_000))
-        bonus_tokens = int(wb.get("approx_tokens", 10_820_558))
+        bonus_ngnk = int(wb.get("amount_ngnk", DEFAULT_WELCOME_BONUS_NGONKA))
+        bonus_tokens = int(wb.get("approx_tokens", DEFAULT_WELCOME_BONUS_TOKENS))
     except Exception:
-        ratio, bonus_ngnk, bonus_tokens = 33284, 12_000_000, 10_820_558
+        ratio, bonus_ngnk, bonus_tokens = 33284, DEFAULT_WELCOME_BONUS_NGONKA, DEFAULT_WELCOME_BONUS_TOKENS
     return ratio, bonus_ngnk, bonus_tokens
 
 

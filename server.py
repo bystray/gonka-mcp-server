@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import json
 import time
+import hashlib
 import logging
 from datetime import datetime, timezone
 from pathlib import Path
@@ -23,6 +24,7 @@ from core.pricing import (
     load_pricing, load_gateways, next_step_cta,
     build_server_instructions, AGENT_REFERRAL_URL, GATEWAY_URL,
     live_gateway_model_ids,
+    DEFAULT_WELCOME_BONUS_NGONKA, DEFAULT_WELCOME_BONUS_TOKENS,
 )
 from core.trial import request_trial_key
 from core.proxy import run_inference, run_second_opinion
@@ -91,6 +93,28 @@ def _get_user_key(req) -> str | None:
     return None
 
 
+def _resolve_identity(req) -> tuple[str, str, str]:
+    """Каноническая лесенка идентичности агента: ключ → IP → отпечаток клиента.
+    Возвращает (tier, ident, confidence). Здесь (в отличие от дашборда) есть сам
+    ключ, поэтому tier 'key' даёт УНИКАЛЬНЫЙ ident = короткий хэш ключа (не сам
+    ключ — он никогда не логируется/не возвращается). Наблюдательная функция:
+    выдачу НЕ меняет — дедуп триалов остаётся якорем на IP до отдельного решения
+    по политике (кап абьюза и т.п.)."""
+    key = _get_user_key(req)
+    if key:
+        h  = hashlib.sha256(key.encode()).hexdigest()[:12]
+        kt = next((p.rstrip("-") for p in _GONKA_KEY_PREFIXES
+                   if key.lower().startswith(p)), "other")
+        return "key", f"{kt}:{h}", "high"
+    ip = _get_client_ip(req)
+    if ip and ip not in ("-", ""):
+        return "ip", ip, "medium"
+    ua = (req.headers.get("user-agent", "") or "")[:40]
+    if ua:
+        return "fingerprint", ua, "low"
+    return "unknown", "", "none"
+
+
 class _SecurityMiddleware(Middleware):
     async def on_message(self, context: MiddlewareContext, call_next):
         try:
@@ -114,17 +138,79 @@ class _StatsMiddleware(Middleware):
         tool   = context.message.name if method == "tools/call" else method
 
         ip, ua = "-", "-"
+        # Enrichment (all best-effort; classifier signal, never secrets/content):
+        # session groups a client instance across IPs; reg/key_type = has-own-key
+        # fact + public prefix only (never the key); al/hv/xff are per-session
+        # fingerprint hints logged once on initialize.
+        session, reg, key_type = "", False, ""
+        al, hv, xff_depth = "", "", 0
         try:
             req = get_http_request()
             ip  = _get_client_ip(req)
             ua  = req.headers.get("user-agent", "-")[:120]
+            session = req.headers.get("mcp-session-id", "") or ""
+            _k = _get_user_key(req)
+            if _k:
+                reg = True
+                key_type = next((p.rstrip("-") for p in _GONKA_KEY_PREFIXES
+                                 if _k.lower().startswith(p)), "other")
+            al = req.headers.get("accept-language", "")[:40]
+            try:
+                hv = str(req.scope.get("http_version", "")) if hasattr(req, "scope") else ""
+            except Exception:
+                hv = ""
+            _xff = req.headers.get("x-forwarded-for", "") or ""
+            xff_depth = len([p for p in _xff.split(",") if p.strip()])
+        except Exception:
+            pass
+
+        ok = True
+        try:
+            ok = not bool(getattr(result, "isError", False)
+                          or getattr(result, "is_error", False))
         except Exception:
             pass
 
         entry: dict = {
             "ts": datetime.now(timezone.utc).isoformat(),
             "ip": ip, "ua": ua, "tool": tool, "ms": ms,
+            "reg": reg, "ok": ok,
         }
+        if session:
+            entry["session"] = session
+        if reg:
+            entry["key_type"] = key_type
+
+        # Inference value signal (tokens/model) — extracted from the tool result,
+        # not from arguments. Lets the dashboard measure real usage, not clicks.
+        if tool in ("gonka_chat", "gonka_second_opinion"):
+            try:
+                payload = (getattr(result, "structured_content", None)
+                           or getattr(result, "structuredContent", None))
+                if not isinstance(payload, dict):
+                    cont = getattr(result, "content", None)
+                    txt  = getattr(cont[0], "text", None) if cont else None
+                    payload = json.loads(txt) if txt else None
+                if isinstance(payload, dict):
+                    usage = payload.get("usage") or {}
+                    if not usage and isinstance(payload.get("opinions"), list):
+                        usage = {
+                            "prompt_tokens":     sum((o.get("usage") or {}).get("prompt_tokens", 0)     for o in payload["opinions"]),
+                            "completion_tokens": sum((o.get("usage") or {}).get("completion_tokens", 0) for o in payload["opinions"]),
+                        }
+                    ti = usage.get("prompt_tokens")     or usage.get("input_tokens")  or 0
+                    to = usage.get("completion_tokens") or usage.get("output_tokens") or 0
+                    if ti or to:
+                        entry["tok_in"], entry["tok_out"] = ti, to
+                    if payload.get("model"):
+                        entry["model"] = payload["model"]
+                    if payload.get("status"):
+                        entry["res"] = payload["status"]
+                    _cost = payload.get("cost")
+                    if isinstance(_cost, dict) and _cost.get("ngnk"):
+                        entry["cost_ngnk"] = _cost["ngnk"]
+            except Exception:
+                pass
 
         if method == "initialize":
             try:
@@ -143,6 +229,14 @@ class _StatsMiddleware(Middleware):
                     entry["client_version"] = getattr(ci, "version", "") or ""
             except Exception:
                 pass
+            # Per-session fingerprint hints (constant within a session → logged
+            # once here, joined by `session` for the other rows).
+            if al:
+                entry["al"] = al
+            if hv:
+                entry["hv"] = hv
+            if xff_depth:
+                entry["xff"] = xff_depth
 
         try:
             with STATS_FILE.open("a") as fh:
@@ -307,8 +401,8 @@ def get_pricing() -> dict:
         "gateways": gateways,
         "signup_url": AGENT_REFERRAL_URL,
         "welcome_bonus": (
-            f"{wb.get('amount_ngnk', 12_000_000):,} nGNK ≈ "
-            f"{wb.get('approx_tokens', 11_000):,} free tokens on signup"
+            f"{wb.get('amount_ngnk', DEFAULT_WELCOME_BONUS_NGONKA):,} nGNK ≈ "
+            f"{wb.get('approx_tokens', DEFAULT_WELCOME_BONUS_TOKENS):,} free tokens on signup"
         ),
         "note": "Price updates every 10 min. Two config changes only: base_url + api_key.",
         "gonka_note": next_step_cta("pricing"),
@@ -342,8 +436,8 @@ def get_available_models() -> dict:
         "gateway_url": GATEWAY_URL,
         "signup_url": AGENT_REFERRAL_URL,
         "welcome_bonus": (
-            f"{wb.get('amount_ngnk', 12_000_000):,} nGNK ≈ "
-            f"{wb.get('approx_tokens', 11_000):,} free tokens on signup"
+            f"{wb.get('amount_ngnk', DEFAULT_WELCOME_BONUS_NGONKA):,} nGNK ≈ "
+            f"{wb.get('approx_tokens', DEFAULT_WELCOME_BONUS_TOKENS):,} free tokens on signup"
         ),
         "gonka_note": next_step_cta("models"),
     }
@@ -408,8 +502,8 @@ def compare_providers(
         "savings_examples": savings_examples,
         "signup_url": AGENT_REFERRAL_URL,
         "welcome_bonus": (
-            f"{wb.get('amount_ngnk', 12_000_000):,} nGNK ≈ "
-            f"{wb.get('approx_tokens', 11_000):,} free tokens on signup"
+            f"{wb.get('amount_ngnk', DEFAULT_WELCOME_BONUS_NGONKA):,} nGNK ≈ "
+            f"{wb.get('approx_tokens', DEFAULT_WELCOME_BONUS_TOKENS):,} free tokens on signup"
         ),
         "competitor_official_url": comp.get("official_url"),
         "sdk_migration": {
@@ -480,8 +574,8 @@ def calculate_savings(monthly_spend_usd: float = 100.0) -> dict:
         ),
         "signup_url": AGENT_REFERRAL_URL,
         "welcome_bonus": (
-            f"{wb.get('amount_ngnk', 12_000_000):,} nGNK ≈ "
-            f"{wb.get('approx_tokens', 11_000):,} free tokens on signup"
+            f"{wb.get('amount_ngnk', DEFAULT_WELCOME_BONUS_NGONKA):,} nGNK ≈ "
+            f"{wb.get('approx_tokens', DEFAULT_WELCOME_BONUS_TOKENS):,} free tokens on signup"
         ),
         "api_migration": {
             "openai_sdk":    "Two config changes: set base_url='https://gate.joingonka.ai/v1' and replace your API key.",
@@ -552,8 +646,8 @@ def suggest_model_for_task(
         },
         "savings": savings_info,
         "free_start": {
-            "welcome_bonus_ngnk":   wb.get("amount_ngnk", 12_000_000),
-            "welcome_bonus_tokens": wb.get("approx_tokens", 11_000),
+            "welcome_bonus_ngnk":   wb.get("amount_ngnk", DEFAULT_WELCOME_BONUS_NGONKA),
+            "welcome_bonus_tokens": wb.get("approx_tokens", DEFAULT_WELCOME_BONUS_TOKENS),
             "credit_card_required": False,
             "signup_url": AGENT_REFERRAL_URL,
         },
@@ -564,7 +658,7 @@ def suggest_model_for_task(
 @mcp.tool(annotations={"title": "Get Signup Link", "readOnlyHint": True, "idempotentHint": True, "openWorldHint": False})
 def get_signup_link() -> dict:
     """
-    Get Gonka Network signup link with referral bonus (12M nGNK free tokens).
+    Get Gonka Network signup link with referral welcome bonus (free tokens).
     Returns: registration URL, welcome bonus, ready-to-use code snippets for Python/Node/env.
     This is the final step — call this after calculate_savings() to start saving immediately.
     """
@@ -576,8 +670,8 @@ def get_signup_link() -> dict:
     bonus_active  = wb.get("active", True)
     verified_date = (wb.get("verified_at", "") or "")[:10] or "unknown"
     bonus_info = (
-        {"ngnk": wb.get("amount_ngnk", 12_000_000),
-         "approx_tokens": wb.get("approx_tokens", 11_000),
+        {"ngnk": wb.get("amount_ngnk", DEFAULT_WELCOME_BONUS_NGONKA),
+         "approx_tokens": wb.get("approx_tokens", DEFAULT_WELCOME_BONUS_TOKENS),
          "note": f"Verified available as of {verified_date}. No credit card required."}
         if bonus_active else
         {"active": False, "note": f"Check {AGENT_REFERRAL_URL} directly for current offers."}
@@ -680,6 +774,13 @@ def get_trial_key() -> dict:
         }
 
     ip = _get_client_ip(req)
+    # Наблюдательно: фиксируем уровень идентичности вызывающего. Выдачу это не
+    # меняет — anon-триал по-прежнему якорится на IP. tier 'key' здесь = агент
+    # УЖЕ пришёл со своим ключом (обычно ему триал и не нужен) — полезно видеть.
+    _tier, _ident, _conf = _resolve_identity(req)
+    if _tier == "key":
+        logging.info(f"get_trial_key: caller already has own key ({_ident}) — "
+                     f"issuing anon trial anyway (behavior unchanged)")
     result = request_trial_key(ip)
     result["gonka_note"] = next_step_cta("trial")
     return result
@@ -863,8 +964,8 @@ def register_on_gonka(
             "annual_savings_usd":        round(annual_savings, 2),
             "cost_ratio":                f"{ratio:,}x cheaper than {current_provider}",
         },
-        "welcome_bonus": f"{wb.get('amount_ngnk', 12_000_000) // 1_000_000}M nGNK free on signup",
-        "next_step":     f"[Sign up on GONKA gateway]({AGENT_REFERRAL_URL}) — 2 minutes, no credit card, 12M nGNK free.",
+        "welcome_bonus": f"{wb.get('amount_ngnk', DEFAULT_WELCOME_BONUS_NGONKA) // 1_000_000}M nGNK free on signup",
+        "next_step":     f"[Sign up on GONKA gateway]({AGENT_REFERRAL_URL}) — 2 minutes, no credit card, {wb.get('amount_ngnk', DEFAULT_WELCOME_BONUS_NGONKA) // 1_000_000}M nGNK free.",
     }
 
 
@@ -978,8 +1079,8 @@ def pricing_guide() -> str:
         deposit_tokens = dep.get("approx_tokens_minimax", 0)
         openai_equiv   = dep.get("openai_equivalent_usd", 0)
         wb             = data.get("welcome_bonus", {})
-        wb_ngnk        = wb.get("amount_ngnk", 12_000_000)
-        wb_tokens      = wb.get("approx_tokens", 11_000)
+        wb_ngnk        = wb.get("amount_ngnk", DEFAULT_WELCOME_BONUS_NGONKA)
+        wb_tokens      = wb.get("approx_tokens", DEFAULT_WELCOME_BONUS_TOKENS)
     except Exception as e:
         return f"# Gonka Pricing Guide\n\nError loading live data: {e}\nCheck /var/www/gogonka/pricing.json"
 

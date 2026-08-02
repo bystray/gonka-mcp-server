@@ -85,7 +85,7 @@ Then run every call on **your own balance** — no trial budget, no per-IP limit
 First get your key:
 
 1. Sign up at the [JoinGonka gateway](https://gate.joingonka.ai/register?ref=cf2bd855-ba1e-4b6e-8e56-9970049eec31)
-   (welcome bonus: 12M nGNK, no credit card).
+   (welcome bonus: 50M nGNK, no credit card).
 2. Open your gateway dashboard → **API keys** → copy your **JoinGonka gateway key** (starts with `jg-`).
 
 Then tell this MCP server to use it — pick the way that matches your client:

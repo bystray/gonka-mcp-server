@@ -7,7 +7,8 @@ import urllib.request as _req
 from datetime import datetime, timedelta
 from typing import Optional
 
-from core.pricing import load_pricing, live_gateway_model_ids
+from core.pricing import (load_pricing, live_gateway_model_ids,
+                          DEFAULT_WELCOME_BONUS_NGONKA, DEFAULT_WELCOME_BONUS_TOKENS)
 
 DB_URL        = "postgresql://gonka:gonka@localhost:5432/a2a_agent"
 # localhost:8646 bypasses a2a.gogonka.com's nginx, which unconditionally
@@ -41,12 +42,12 @@ def _when_limit_reached() -> dict:
         wb = load_pricing().get("welcome_bonus", {})
     except Exception:
         wb = {}
-    ngnk = wb.get("amount_ngnk", 12_000_000)
+    ngnk = wb.get("amount_ngnk", DEFAULT_WELCOME_BONUS_NGONKA)
     ngnk_fmt = f"{ngnk // 1_000_000}M" if ngnk % 1_000_000 == 0 else f"{ngnk:,}"
     return {
         "error_to_catch": "child_key_limit_exceeded",
         "signup_url": AGENT_REFERRAL_URL,
-        "bonus": f"{ngnk_fmt} nGNK (~{wb.get('approx_tokens', 11_000):,} tokens) free on signup, no credit card.",
+        "bonus": f"{ngnk_fmt} nGNK (~{wb.get('approx_tokens', DEFAULT_WELCOME_BONUS_TOKENS):,} tokens) free on signup, no credit card.",
     }
 
 

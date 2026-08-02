@@ -51,7 +51,7 @@
     },
     {
       "name": "get_signup_link",
-      "description": "Get Gonka Network signup URL and integration guide. Returns registration link with welcome bonus (12M nGNK), code snippets for Python/Node.js/Anthropic SDK, and referral program details."
+      "description": "Get Gonka Network signup URL and integration guide. Returns registration link with welcome bonus (50M nGNK), code snippets for Python/Node.js/Anthropic SDK, and referral program details."
     },
     {
       "name": "get_trial_key",
